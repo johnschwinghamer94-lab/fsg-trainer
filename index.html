@@ -339,6 +339,23 @@ SCENARIOS.warmair.objCats = ["price","stall","old_system","doubt"];
 SCENARIOS.maint.objCats   = ["stall","doubt","spouse","competitor"];
 SCENARIOS.noac.objCats    = ["price","old_system","competitor","stall"];
 
+// personalities — distinct voice, acknowledgements, worries, and small talk per homeowner
+SCENARIOS.warmair.persona = {
+  ack:["Okay.","Alright, yeah.","Gotcha.","Sure, that works.","Mm-hm, okay.","Yeah, for sure."],
+  worry:["You think it's something serious?","Is this gonna be a big fix?","Man, I hope it's not the whole unit.","How long do these usually take to fix?"],
+  small:["It's been a rough one, honestly — brutal in here.","I just want it cooling again, you know?","Appreciate you coming out so quick."]
+};
+SCENARIOS.maint.persona = {
+  ack:["Oh, okay, sounds good.","Sure, of course.","That's fine, take your time.","Okay, wonderful.","Mm-hm, absolutely."],
+  worry:["Everything looking okay so far?","Anything I should be worried about?","You all always take such good care of it.","Is it in decent shape for its age?"],
+  small:["We've been with you guys for years, you know.","The kids basically grew up in this house.","I like to stay on top of the maintenance."]
+};
+SCENARIOS.noac.persona = {
+  ack:["Okay.","Fine.","Yeah, whatever works.","Sure.","Alright, go ahead.","Mm."],
+  worry:["Just tell me it's not gonna cost a fortune.","This better not turn into a whole new system.","How much is this gonna run me?","Give it to me straight — how bad is it?"],
+  small:["It's an oven in here, so let's keep it moving.","Last company kind of burned me, just so you know.","I don't have all day, so."]
+};
+
 /* ---------- STATE ---------- */
 let SC=null, DF=null, phase=0, started=false, awaitingObjection=false;
 let voices=[], custVoice=null;
@@ -346,6 +363,9 @@ const done = {}; // checkpoint flags
 let jargonHits=0, turns=0;
 let mode="call";                 // "call" or "gym"
 let curObjType=null;             // type of the objection currently on the table
+let lastCust="";                 // last homeowner line (anti-repeat)
+let recentCust=[];               // recent homeowner lines (anti-repeat window)
+function personaOf(){ return (SC && SC.persona) || {ack:["Okay.","Sure.","Alright."],worry:[],small:[]}; }
 const GYM = {cat:"mixed", queue:[], i:0, results:[], gender:"m", name:"Homeowner"};
 
 /* ---------- CHECKPOINT DEFINITIONS (for coaching) ---------- */
@@ -544,8 +564,11 @@ function techSays(raw){
   if(any(t,[" amp"," volt","superheat","subcool"," lra ","microfarad","capacitance"," ohm"])){ jargonHits++; }
 
   /* ===================== PHASE 0: WELCOME & OBSERVATIONS ===================== */
-  // Intro + name
-  if(!done.intro && (any(t,["i'm ","i am ","my name","this is "]) && any(t,["sierra","with ","from "]) || any(t,["and you are","get your name","your name"]))){
+  // Intro + name  (require a real company reference so "I'm going ... with you" doesn't misfire)
+  if(!done.intro && phase===0 && (
+       (any(t,["i'm ","i am ","my name","this is "]) && any(t,["sierra","air conditioning","with sierra","from sierra","the company","air and heat","hvac"]))
+       || any(t,["and you are","get your name","and your name","who am i speaking"])
+     )){
     done.intro=true;
     reply.push(`Nice to meet you, I'm ${SC.name}.`);
   }
@@ -554,26 +577,31 @@ function techSays(raw){
     done.parking=true; reply.push(rand([`Yeah, right there's fine.`,`That spot works, no problem.`]));
   }
   // Permission to enter
-  if(!done.permission && any(t,["come in","come inside","okay if i","mind if i","alright if i","permission","step inside","head in","enter"])){
-    done.permission=true; reply.push(rand([`Sure, come on in.`,`Yeah, please — come in.`]));
+  if(!done.permission && any(t,["come in","come inside","can i come","okay if i","ok if i","mind if i","alright if i","cool if i","good if i","permission","step inside","step in","head in","head inside","enter","invite me in"])){
+    done.permission=true; reply.push(rand([`Sure, come on in.`,`Yeah, please — come in.`,`Of course, right this way.`]));
   }
   // Floor protection
   if(!done.floor && any(t,["floor protect","shoe cover","boot cover","booties","protect your floor","cover my shoes","cover my boots"])){
     done.floor=true; reply.push(rand([`Oh — thanks, I appreciate that.`,`Wow, most people don't do that. Thank you.`]));
   }
-  // Personal connection
-  if(!done.connect && any(t,["how are you","how's your day","how has your day","nice ","love the","i saw","are you a","noticed you","that's a cool","great looking","beautiful home","weather","game last night","how's it going","how you doing"])){
-    done.connect=true; reply.push(rand([`Ha, yeah! Good eye. Doing alright, thanks for asking.`,`Oh yeah — appreciate you noticing. Been a long day but hanging in there.`]));
+  // Personal connection / small talk
+  if(!done.connect && any(t,["how are you","how's your day","how has your day","nice ","love the","i saw","are you a","noticed you","that's a cool","great looking","beautiful home","nice home","nice place","nice house","weather","game last night","how's it going","how you doing","how's the family","been a while","good to see you"])){
+    done.connect=true; reply.push(rand([`Ha, yeah! Good eye. Doing alright, thanks for asking.`,`Oh yeah — appreciate you noticing. Been a long day but hanging in there.`,`Ha, thanks — yeah, we like it here. How are you doing?`]));
   }
   // Confirm reason
-  if(!done.reason && any(t,["here today","here for","looks like i'm here","out today","reason i'm","i'm out","is that right","correct"]) && phase===0){
+  if(!done.reason && phase===0 && any(t,["here today","here for","looks like i'm here","looks like i'm out","out today","out here because","reason i'm","reason for","i'm out here","sent me out","sent out","came out","dispatched","showing me","blowing warm","not cooling","no cold air","not blowing cold","is that right","is that correct","that correct"])){
     done.reason=true;
     reply.push(isService? `Yes — ${F.noticed}` : `That's right, you all do this for me every year.`);
   }
   // Brief technical question
-  if(!done.techq && any(t,["when did you","when did it","how long has","how has it","first notice","what's it doing","what's going on with","been running","start happening","how's the system"])){
+  if(!done.techq && any(t,["when did you","when did it","when'd it","how long has","how long's it","how has it","first notice","what's it doing","what is it doing","what's going on with","been running","start happening","how's the system","how old is","what have you noticed","noticing anything","what's the temp","reading on the thermostat"])){
     done.techq=true;
-    reply.push(isService? F.noticed : `It's been running fine, no complaints.`);
+    if(isService){
+      // don't repeat the "noticed" line if the reason step already revealed it
+      reply.push(done.reason
+        ? rand([`Yeah, and now there's just no cold air at all coming out.`,`It's the first real trouble we've had with it, honestly.`,`Nothing before this — it just quit on me today.`, F.history])
+        : F.noticed);
+    } else reply.push(rand([`It's been running fine, no complaints.`,`Pretty good — you all keep it in good shape.`]));
   }
   // Intent to fix today (must reference fixing/getting it working, not just the word "today")
   if(isService && !done.today_intent && any(t,["today"]) &&
@@ -684,6 +712,24 @@ function techSays(raw){
 
   // Trim to a natural length (max 2 sentences of homeowner)
   let out = reply.slice(0,2).join(" ");
+  const p = personaOf();
+
+  // anti-repeat: never say the exact same thing twice in a short window
+  if(recentCust.includes(out)){
+    const alt = p.ack.filter(a=>!recentCust.includes(a));
+    if(alt.length) out = rand(alt);
+    else if(p.worry.length) out = rand(p.worry);
+  }
+
+  // proactivity: occasionally Jack adds a follow-up beat so he feels alive
+  // (only in early phases, only when he isn't already asking something)
+  if((phase===0||phase===1) && !/[?]\s*$/.test(out) && Math.random()<0.30){
+    const beats = p.worry.concat(p.small).filter(b=>!recentCust.includes(b));
+    if(beats.length) out += " " + rand(beats);
+  }
+
+  lastCust = out;
+  recentCust.push(out); if(recentCust.length>5) recentCust.shift();
   addMsg("cust", out);
   hintNudge();
   return out;
@@ -701,12 +747,37 @@ function maybeObjection(reply, force){
   }
 }
 
-/* fallback responses keep it human */
+/* fallback responses — tone/topic aware so off-script input still makes sense */
 function fallback(t){
-  if(Q(t)) return rand([`Hm, good question. Honestly I'm not totally sure.`,`Yeah... what do you think?`,`I'm not sure, you're the expert.`]);
-  if(any(t,["sorry","apolog"])) return `Oh, no worries at all.`;
-  if(any(t,["thank"])) return `Of course.`;
-  return rand([`Okay.`,`Mm-hm.`,`Alright, go on.`,`Sure.`,`Right.`]);
+  const svc = SC && SC.type==="service";
+  // apology / empathy from the tech
+  if(any(t,["sorry","apolog","that stinks","that sucks","i understand how","i know that's","must be frustrating","must be miserable"]))
+    return rand([`I appreciate that, thank you.`,`Yeah, it's been a frustrating day, but thanks.`,`No worries — I'm just glad you're here.`]);
+  // thanks
+  if(any(t,["thank you","thanks","appreciate you"]))
+    return rand([`Of course.`,`No problem at all.`,`Sure thing.`]);
+  // venting / frustration / profanity
+  if(any(t,["fucked","screwed","piece of","i hate","frustrat","miserable","killing me","broken","not working","won't work","won't turn","stupid","annoying","a mess","garbage","terrible"]))
+    return rand([`Yeah, tell me about it — it's roasting in here.`,`Right? I just need it working again.`,`Honestly it's been driving me nuts.`,`Exactly, that's why I called you guys.`]);
+  // compliment about the company / speed / service
+  if(any(t,["so fast","real quick","got here quick","great job","you guys are","love you guys","good company","reliable","best company","always come through"]))
+    return rand([`Yeah, you all got here quick — I appreciate that.`,`That's why I keep calling you guys.`,`Honestly, that's a big reason I stick with you.`]);
+  // small talk / weather / personal
+  if(any(t,["weather","weekend","how are you","how's it going","how you doing","hot out","hot today","hot one","nice place","kids","the dog","the game","vegas","heat wave"]))
+    return rand([`Ha, yeah — this heat is no joke. Anyway, hopefully you can sort this out.`,`Doing alright, just want the AC back honestly.`,`Yeah, tell me about it. So what's the plan?`]);
+  // simple agreement / acknowledgement
+  if(/^\s*(yeah|yep|yes|ok|okay|right|sure|exactly|for sure|totally|correct|mhm|uh huh)\b/.test(t))
+    return rand([`Mm-hm.`,`Right.`,`Yeah, exactly.`,`Okay.`]);
+  // a question to the homeowner → defer to the expert
+  if(Q(t)) return rand([`Hm, good question — honestly I'm not sure, you're the expert.`,`Yeah... what do you think?`,`I was kind of hoping you could tell me that.`]);
+  // grounded default — references the situation and nudges the call forward
+  return rand([
+    svc? `Okay. So what do you think is going on with it?` : `Okay, sounds good.`,
+    svc? `Alright. It's just really warm in here, so whatever you can do.` : `Sure, whatever you need to check.`,
+    `Got it. What's the next step?`,
+    `Okay, yeah — go ahead.`,
+    svc? `I just want to get it cooling again, honestly.` : `Yeah, that works for me.`
+  ]);
 }
 
 /* gentle hint if the tech seems stuck (easy mode only, occasional) */
@@ -948,6 +1019,7 @@ function startCall(){
   SC=Object.assign({}, SCENARIOS[chosenScenario]);
   DF=DIFFS[chosenDiff];
   phase=0; started=true; awaitingObjection=false; jargonHits=0; turns=0;
+  lastCust=""; recentCust=[];
   Object.keys(done).forEach(k=>delete done[k]);
   custVoice=pickVoice(SC.gender);
   log.innerHTML="";
