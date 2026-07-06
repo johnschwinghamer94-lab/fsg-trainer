@@ -620,12 +620,12 @@ function techSays(raw){
   if(!done.floor && any(t,["floor protect","shoe cover","boot cover","booties","protect your floor","cover my shoes","cover my boots"])){
     done.floor=true; reply.push(rand([`Oh — thanks, I appreciate that.`,`Wow, most people don't do that. Thank you.`]));
   }
-  // Personal connection / small talk
-  if(!done.connect && any(t,["how are you","how's your day","how has your day","nice ","love the","i saw","are you a","noticed you","that's a cool","great looking","beautiful home","nice home","nice place","nice house","weather","game last night","how's it going","how you doing","how's the family","been a while","good to see you"])){
+  // Personal connection / small talk  (kept specific so "are you a member" / "nice to meet you" don't trip it)
+  if(!done.connect && any(t,["how are you","how's your day","how has your day","love the","i saw","you a fan","big fan","are you a fan","fan of","are you into","noticed you","that's a cool","great looking","beautiful home","nice home","nice place","nice house","nice truck","nice yard","weather","game last night","how's it going","how you doing","how's the family","been a while","good to see you"])){
     done.connect=true; reply.push(rand([`Ha, yeah! Good eye. Doing alright, thanks for asking.`,`Oh yeah — appreciate you noticing. Been a long day but hanging in there.`,`Ha, thanks — yeah, we like it here. How are you doing?`]));
   }
   // Confirm reason
-  if(!done.reason && phase===0 && any(t,["here today","here for","looks like i'm here","looks like i'm out","out today","out here because","reason i'm","reason for","i'm out here","sent me out","sent out","came out","dispatched","showing me","blowing warm","not cooling","no cold air","not blowing cold","is that right","is that correct","that correct"])){
+  if(!done.reason && phase===0 && any(t,["here today","here for","looks like i'm here","looks like i'm out","here because","out here because","reason i'm","reason for","i'm out here","sent me out","sent out","came out","dispatched","showing me","blowing warm","not cooling","no cold air","not blowing cold","is that right","is that correct","that correct"])){
     done.reason=true;
     reply.push(isService? `Yes — ${F.noticed}` : `That's right, you all do this for me every year.`);
   }
@@ -641,7 +641,7 @@ function techSays(raw){
   }
   // Intent to fix today (must reference fixing/getting it working, not just the word "today")
   if(isService && !done.today_intent && any(t,["today"]) &&
-     any(t,["fix it","get it fixed","fixed today","up and running","get started","taken care of","get it running","get it working","working again","get it going","resolved"])){
+     any(t,["fix it","get it fixed","fixed today","up and running","get started","taken care","get it running","get it working","working again","get it going","resolved","knocked out","knock that out","handled","get it done","get that done","get this done","squared away"])){
     if(phase===0){ done.today_intent=true; reply.push(rand([`Yeah, ideally today if you can.`,`Please — I need this working as soon as possible.`])); }
   }
   // Membership
@@ -673,6 +673,10 @@ function techSays(raw){
   if(any(t,["set your thermostat","thermostat set","what temperature","keep it set","keep the house","keep it at","set it to","set it at","like to keep it","comfortable at"])){ done.q_thermostat=true; reply.push(F.thermostat); }
   if(any(t,["power bill","energy bill","utility","electric bill","electricity bill","monthly bill","cost to run","your bill","light bill"])){ done.q_bill=true; reply.push(F.bill); }
 
+  // "Show me to your thermostat" / lead the way (transition into the home)
+  if(any(t,["show me to your","show me your thermostat","show me to the","take me to your","lead the way","where's your thermostat","where is your thermostat","which way to"])){
+    reply.push(rand([`Sure, it's right this way.`,`Of course — follow me.`,`Yeah, it's just down the hall.`]));
+  }
   // Knock / return preference
   if(any(t,["knock or just let myself","knock or let myself","prefer i knock"])){ reply.push(`Just come on in when you're ready.`); }
 
@@ -720,7 +724,7 @@ function techSays(raw){
   }
   // Objection handling detection (empathy + question)
   if(awaitingObjection || done.obj_pending){
-    const empathy=any(t,["understand","i hear you","hear you","totally get","i get it","get it","makes sense","i know","that's fair","completely fair","no rush","take your time","appreciate you being","don't blame you","i'd feel the same","chunk of change","that's a lot"]);
+    const empathy=any(t,["understand","i hear you","hear you","totally get","i get it","get it","makes sense","i know","that's fair","totally fair","fair enough","completely fair","no rush","take your time","appreciate you being","don't blame you","i'd feel the same","chunk of change","that's a lot","that is a lot","big number","that's a big","that is a big"]);
     const question=Q(t)||any(t,["can i ask","what is it","what's holding","holding you back","what's the main","what is the main","giving you pause","what's stopping","biggest concern","what concerns","on your mind","how do you feel","what are you thinking","mind if i ask","what would","which part","talk me through","help me understand"]);
     if(empathy){ done.obj_empathy=true; }
     if(empathy && question){ done.obj_question=true; awaitingObjection=false; done.obj_pending=false;
@@ -745,7 +749,8 @@ function techSays(raw){
   if(any(t,["thank you","thanks","appreciate you","have a great"]) && phase===2 && done.review){ reply.push(`Thank you! Take care.`); }
 
   /* ---- fallback if nothing recognized ---- */
-  if(reply.length===0){
+  const usedFallback = reply.length===0;
+  if(usedFallback){
     reply.push(fallback(t));
   }
 
@@ -762,8 +767,9 @@ function techSays(raw){
   }
 
   // proactivity: occasionally Jack adds a follow-up beat so he feels alive
-  // (only in early phases, only when he isn't already asking something)
-  if((phase===0||phase===1) && !/[?]\s*$/.test(out) && Math.random()<0.30){
+  // (early phases only, not when he's already asking, and not when the whole
+  //  line was just a grounded fallback — that already stands on its own)
+  if((phase===0||phase===1) && !usedFallback && !/[?]\s*$/.test(out) && Math.random()<0.28){
     const beats = p.worry.concat(p.small).filter(b=>!recentCust.includes(b));
     if(beats.length) out += " " + rand(beats);
   }
