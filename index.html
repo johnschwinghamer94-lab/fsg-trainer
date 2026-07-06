@@ -510,37 +510,52 @@ function speak(text, onend){
   }catch(e){ if(onend) onend(); }
 }
 
-/* Speech recognition */
+/* Speech recognition
+   Pause tolerance: we run in "continuous" mode and only send after a longer stretch
+   of silence, so a natural mid-sentence pause no longer cuts you off.
+   Tap the mic again any time to send immediately. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recog=null, listening=false, recSupported=!!SR;
+let finalText="", silenceTimer=null, sendOnEnd=false;
+let PAUSE_MS = 3500;   // how long you can pause mid-sentence before it sends
+const START_GRACE_MS = 9000; // time to begin speaking after tapping the mic
+
+function clearSilence(){ if(silenceTimer){ clearTimeout(silenceTimer); silenceTimer=null; } }
+function armSilence(ms){
+  clearSilence();
+  silenceTimer=setTimeout(()=>{ if(listening){ sendOnEnd=true; try{recog.stop()}catch(e){} } }, ms);
+}
+
 if(recSupported){
   recog=new SR();
-  recog.lang="en-US"; recog.interimResults=true; recog.continuous=false; recog.maxAlternatives=1;
-  let finalText="";
-  recog.onstart=()=>{ listening=true; finalText=""; micBtn.classList.add('listening'); };
+  recog.lang="en-US"; recog.interimResults=true; recog.continuous=true; recog.maxAlternatives=1;
+  recog.onstart=()=>{ listening=true; micBtn.classList.add('listening'); armSilence(START_GRACE_MS); };
   recog.onresult=(e)=>{
     let interim="", fin="";
     for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) fin+=t; else interim+=t;
+      const tr=e.results[i][0].transcript;
+      if(e.results[i].isFinal) fin+=tr+" "; else interim+=tr;
     }
     if(fin) finalText+=fin;
     entry.value=(finalText+interim).trim();
     autoGrow();
+    armSilence(PAUSE_MS);         // reset the pause countdown every time you speak
   };
-  recog.onerror=(e)=>{ listening=false; micBtn.classList.remove('listening');
+  recog.onerror=(e)=>{ clearSilence(); listening=false; micBtn.classList.remove('listening');
     if(e.error==="not-allowed"||e.error==="service-not-allowed"){
       voiceNote.textContent="Mic blocked — allow mic access or type."; }
   };
-  recog.onend=()=>{ listening=false; micBtn.classList.remove('listening');
+  recog.onend=()=>{
+    clearSilence(); listening=false; micBtn.classList.remove('listening');
     const t=entry.value.trim();
-    if(t){ send(t); }  // auto-send what was heard
+    if(t && sendOnEnd){ sendOnEnd=false; send(t); }   // only send when the pause elapsed or you tapped to send
+    finalText="";
   };
 }
 function startListen(){
   if(!recSupported){ voiceNote.textContent="Voice input not supported here — please type."; return; }
-  if(listening){ try{recog.stop()}catch(e){} return; }
-  try{ speechSynthesis && speechSynthesis.cancel(); entry.value=""; recog.start(); }
+  if(listening){ clearSilence(); sendOnEnd=true; try{recog.stop()}catch(e){} return; } // tap again = send now
+  try{ speechSynthesis && speechSynthesis.cancel(); entry.value=""; finalText=""; sendOnEnd=false; recog.start(); }
   catch(e){}
 }
 
