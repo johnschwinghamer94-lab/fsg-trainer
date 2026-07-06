@@ -600,21 +600,24 @@ function techSays(raw){
   if(any(t,[" amp"," volt","superheat","subcool"," lra ","microfarad","capacitance"," ohm"])){ jargonHits++; }
 
   /* ===================== PHASE 0: WELCOME & OBSERVATIONS ===================== */
-  // Intro + name  (require a real company reference so "I'm going ... with you" doesn't misfire)
+  // Intro + name  — real name-ask phrasings mined from the team's call transcripts
   if(!done.intro && phase===0 && (
        (any(t,["i'm ","i am ","my name","this is "]) && any(t,["sierra","air conditioning","with sierra","from sierra","the company","air and heat","hvac"]))
-       || any(t,["and you are","get your name","and your name","who am i speaking"])
+       || any(t,["what's your name","what is your name","what was your name","your name","and you are","and you're","who are you","get your name",
+                 "who do i have the pleasure","who'd i have the pleasure","who do i got the pleasure","who do i got",
+                 "pleasure of speaking","pleasure of talking","pleasure to speak","pleasure to talk","pleasure to meet","pleasure of meeting",
+                 "who am i speaking","who am i talking","who's this","didn't catch your name","may i ask who"])
      )){
     done.intro=true;
-    reply.push(`Nice to meet you, I'm ${SC.name}.`);
+    reply.push(rand([`Nice to meet you, I'm ${SC.name}.`, `I'm ${SC.name}. Good to meet you.`, `${SC.name}. Nice to meet you.`]));
   }
   // Parking (parking-specific words only, so "head to the van" doesn't trip it)
   if(!done.parking && phase===0 && any(t,["park","parked","parking","blocking","in the way","driveway","out front","where i left","spot okay","okay where i"])){
-    done.parking=true; reply.push(rand([`Yeah, right there's fine.`,`That spot works, no problem.`]));
+    done.parking=true; reply.push(rand([`Yeah, that's fine.`,`Yeah, you're good.`,`You're fine right there.`,`That spot works, no problem.`,`Yeah, right there's perfect.`]));
   }
   // Permission to enter
   if(!done.permission && any(t,["come in","come inside","can i come","okay if i","ok if i","mind if i","alright if i","cool if i","good if i","permission","step inside","step in","head in","head inside","enter","invite me in"])){
-    done.permission=true; reply.push(rand([`Sure, come on in.`,`Yeah, please — come in.`,`Of course, right this way.`]));
+    done.permission=true; reply.push(rand([`Yeah, come on in.`,`Sure, come on in.`,`Yep, come on in.`,`Of course, right this way.`,`Yeah, please — come in.`]));
   }
   // Floor protection
   if(!done.floor && any(t,["floor protect","shoe cover","boot cover","booties","protect your floor","cover my shoes","cover my boots"])){
@@ -660,7 +663,7 @@ function techSays(raw){
     if(any(t,["approval","without your approval","won't start","get started today","start today","authorize"])) done.exp_approval=true;
     if(any(t,["five-star","5 star","5-star","stop me","let me know if","meeting your expectations"])) done.exp_5star=true;
     if((done.exp_look||done.exp_eval||done.exp_time||done.exp_permission||done.exp_approval||done.exp_5star)){
-      reply.push(rand([`Okay, that sounds good.`,`Sure, that all makes sense. Thanks for walking me through it.`,`Got it — that's fair.`]));
+      reply.push(rand([`Okay, that sounds good.`,`Sure, that all makes sense. Thanks for walking me through it.`,`Got it — that's fair.`,`Okay, perfect. Just let me know.`,`Yeah, that works for me.`]));
     }
   }
 
@@ -811,9 +814,9 @@ function fallback(t){
   // small talk / weather / personal
   if(any(t,["weather","weekend","how are you","how's it going","how you doing","hot out","hot today","hot one","nice place","kids","the dog","the game","vegas","heat wave"]))
     return rand([`Ha, yeah — this heat is no joke. Anyway, hopefully you can sort this out.`,`Doing alright, just want the AC back honestly.`,`Yeah, tell me about it. So what's the plan?`]);
-  // simple agreement / acknowledgement
+  // simple agreement / acknowledgement (authentic filler from the real transcripts)
   if(/^\s*(yeah|yep|yes|ok|okay|right|sure|exactly|for sure|totally|correct|mhm|uh huh)\b/.test(t))
-    return rand([`Mm-hm.`,`Right.`,`Yeah, exactly.`,`Okay.`]);
+    return rand([`Mm-hmm.`,`Right.`,`Yeah, exactly.`,`Okay.`,`Oh, okay.`,`Gotcha.`,`Yep.`,`Got it.`,`Oh yeah.`]);
   // a question to the homeowner → defer to the expert
   if(Q(t)) return rand([`Hm, good question — honestly I'm not sure, you're the expert.`,`Yeah... what do you think?`,`I was kind of hoping you could tell me that.`]);
   // grounded default — references the situation and nudges the call forward
