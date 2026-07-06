@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0D1F3C">
+<title>FSG Live Trainer — Sierra · SILO</title>
+<style>
+  :root{
+    --navy:#0D1F3C; --navy2:#16305c; --amber:#F59E0B; --amber2:#ffbf47;
+    --ink:#1a2333; --paper:#f4f6fb; --card:#ffffff; --line:#dbe2ef;
+    --good:#1f9d55; --solid:#2f80ed; --mod:#e0a80d; --weak:#d64545; --muted:#6b7896;
+    --techBg:#0D1F3C; --custBg:#eef2fa;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0; height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--paper); color:var(--ink); display:flex; flex-direction:column; height:100dvh; overflow:hidden}
+  header{background:var(--navy); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:10px; flex:none}
+  header .logo{font-weight:800; letter-spacing:.5px; font-size:15px}
+  header .logo .amber{color:var(--amber)}
+  header .tag{font-size:11px; color:#9fb0d0; margin-left:auto; text-align:right; line-height:1.25}
+
+  /* Setup screen */
+  #setup{padding:16px; overflow:auto; flex:1}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:0 auto 14px; max-width:620px; box-shadow:0 1px 3px rgba(16,32,64,.06)}
+  .card h2{margin:0 0 4px; font-size:16px}
+  .card p.sub{margin:0 0 14px; color:var(--muted); font-size:13px}
+  label.fld{display:block; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:14px 0 6px}
+  .opts{display:grid; gap:8px}
+  .opt{border:1.5px solid var(--line); border-radius:11px; padding:11px 13px; cursor:pointer; background:#fff; transition:.12s}
+  .opt .t{font-weight:700; font-size:14px}
+  .opt .d{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .opt.sel{border-color:var(--amber); background:#fffaf0; box-shadow:0 0 0 2px rgba(245,158,11,.15)}
+  .diffRow{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+  .diffRow .opt{text-align:center}
+  .btn{display:block; width:100%; border:none; border-radius:12px; padding:15px; font-size:16px; font-weight:800;
+       background:var(--amber); color:#3a2600; cursor:pointer; margin-top:18px}
+  .btn:active{transform:translateY(1px)}
+  .btn.sec{background:var(--navy); color:#fff}
+  .warn{font-size:12px; color:#8a5a00; background:#fff6e0; border:1px solid #ffe3a3; border-radius:10px; padding:10px 12px; margin-top:14px}
+
+  /* Call screen */
+  #call{display:none; flex:1; min-height:0; flex-direction:column}
+  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); flex:none}
+  .tabs button{flex:1; border:none; background:none; padding:10px 4px 8px; font-size:11.5px; font-weight:700; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; line-height:1.2}
+  .tabs button .n{display:block; font-size:9px; opacity:.7; font-weight:800}
+  .tabs button.act{color:var(--navy); border-bottom-color:var(--amber)}
+  .scene{background:#fff8ea; border-bottom:1px solid #f0e3c4; color:#6a5320; font-size:12.5px; padding:8px 14px; font-style:italic; flex:none}
+
+  #log{flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch}
+  .msg{max-width:82%; padding:10px 13px; border-radius:14px; font-size:14.5px; line-height:1.4; white-space:pre-wrap; word-wrap:break-word}
+  .msg.cust{background:var(--custBg); color:var(--ink); align-self:flex-start; border-bottom-left-radius:4px}
+  .msg.tech{background:var(--techBg); color:#fff; align-self:flex-end; border-bottom-right-radius:4px}
+  .msg .who{display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; opacity:.6; margin-bottom:2px}
+  .msg.coach{background:#eefaf1; border:1px solid #bfe6cb; color:#14421f; align-self:stretch; max-width:100%; border-radius:12px}
+  .msg.sys{align-self:center; background:none; color:var(--muted); font-size:12px; font-style:italic; max-width:100%; text-align:center}
+
+  /* Coaching cards */
+  .coachHead{font-weight:800; font-size:14px; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+  .band{display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center; margin:7px 0}
+  .band .lab{font-size:13px; font-weight:600}
+  .pill{font-size:11px; font-weight:800; padding:2px 9px; border-radius:20px; color:#fff; white-space:nowrap}
+  .pill.Strong{background:var(--good)} .pill.Solid{background:var(--solid)}
+  .pill.Moderate{background:var(--mod); color:#3a2c00} .pill.Weak{background:var(--weak)}
+  .bar{grid-column:1/3; height:6px; background:#e4ead6; border-radius:4px; overflow:hidden}
+  .bar>i{display:block; height:100%}
+  .fb{grid-column:1/3; font-size:12px; color:#3a5a44; margin:1px 0 2px}
+  .fb.miss{color:#9a5a2a}
+
+  /* Input bar */
+  .inbar{flex:none; background:#fff; border-top:1px solid var(--line); padding:8px; display:flex; flex-direction:column; gap:8px}
+  .toggles{display:flex; gap:14px; padding:0 4px; font-size:12px; color:var(--muted); align-items:center; flex-wrap:wrap}
+  .toggles label{display:flex; align-items:center; gap:5px; cursor:pointer}
+  .row{display:flex; gap:8px; align-items:flex-end}
+  #entry{flex:1; resize:none; border:1.5px solid var(--line); border-radius:12px; padding:11px 12px; font-size:15px; font-family:inherit; max-height:110px; min-height:46px; line-height:1.3}
+  .mic{flex:none; width:52px; height:46px; border:none; border-radius:12px; background:var(--navy); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center}
+  .mic.listening{background:var(--weak); animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(214,69,69,.5)}50%{box-shadow:0 0 0 8px rgba(214,69,69,0)}}
+  .send{flex:none; width:52px; height:46px; border:none; border-radius:12px; background:var(--amber); color:#3a2600; font-size:20px; font-weight:800; cursor:pointer}
+  .actbar{display:flex; gap:8px}
+  .actbar button{flex:1; border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px; font-size:12.5px; font-weight:700; color:var(--navy); cursor:pointer}
+  .actbar button.end{color:var(--weak); border-color:#f0c9c9}
+  .hidden{display:none!important}
+  .notice{font-size:11.5px; color:var(--muted); text-align:center; padding:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FSG <span class="amber">LIVE</span> TRAINER</div>
+  <div class="tag">Sierra · SILO<br>Practice partner</div>
+</header>
+
+<!-- ===================== SETUP ===================== -->
+<div id="setup">
+  <div class="card">
+    <h2>Practice a live call</h2>
+    <p class="sub">Talk (or type) to an AI homeowner. They answer out loud and you get an FSG debrief. Runs 100% on your phone — no login, no key, nothing billed.</p>
+
+    <label class="fld">Choose a scenario</label>
+    <div class="opts" id="scenarioOpts"></div>
+
+    <div id="diffWrap">
+      <label class="fld">Difficulty</label>
+      <div class="diffRow" id="diffOpts"></div>
+    </div>
+
+    <div id="gymWrap" class="hidden">
+      <label class="fld">Objection category</label>
+      <div class="opts" id="gymCatOpts"></div>
+    </div>
+
+    <button class="btn" id="startBtn">▶  Start new call</button>
+    <div class="warn">This is practice. Use realistic objections, but never enter or speak real customer names or personal information.</div>
+  </div>
+</div>
+
+<!-- ===================== CALL ===================== -->
+<div id="call">
+  <div class="tabs" id="tabs">
+    <button data-ph="0" class="act"><span class="n">STEP 1–2</span>Welcome &amp; Observations</button>
+    <button data-ph="1"><span class="n">STEP 3</span>Findings &amp; Check-In</button>
+    <button data-ph="2"><span class="n">STEP 4–5</span>Options &amp; Close</button>
+  </div>
+  <div class="scene" id="scene"></div>
+  <div id="log"></div>
+
+  <div class="inbar">
+    <div class="actbar">
+      <button id="coachBtn">🧭 Coach me</button>
+      <button id="restartBtn">↺ New call</button>
+      <button id="endBtn" class="end">■ End &amp; debrief</button>
+    </div>
+    <div class="toggles">
+      <label><input type="checkbox" id="speakChk" checked> 🔊 Speak replies</label>
+      <label><input type="checkbox" id="autoChk"> 🎙️ Auto-listen</label>
+      <span id="voiceNote" class="notice" style="margin-left:auto"></span>
+    </div>
+    <div class="row">
+      <button class="mic" id="micBtn" title="Tap to talk">🎤</button>
+      <textarea id="entry" rows="1" placeholder="Tap the mic to talk, or type here…"></textarea>
+      <button class="send" id="sendBtn">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   FSG LIVE TRAINER  —  scripted, offline, no API key
+   Grounded in the SILO Field Strategy Guide
+   ============================================================ */
+
+/* ---------- SCENARIOS ---------- */
+const SCENARIOS = {
+  warmair: {
+    title:"AC blowing warm air (Demand Service)",
+    blurb:"Classic demand call. Homeowner is warm and a little stressed.",
+    type:"service", name:"Jack", gender:"m",
+    scene:"You're at Jack's front door. It's a hot afternoon. His AC is blowing warm air. Knock and begin your Welcome Step.",
+    reason:"the system is just blowing warm air",
+    facts:{
+      lived:"About 3 years now.", purchase:"Yeah, that's when we bought it.",
+      stay:"Oh, we're staying — this is home for the long haul.",
+      filters:"Honestly? Maybe every few months. I forget.",
+      rooms:"The upstairs office gets way hotter than the rest of the house.",
+      thermostat:"We keep it around 72 in the summer.",
+      bill:"It's been creeping up — last month was rough, like $280.",
+      noticed:"It was fine when I left this morning, but it was hot when I got home from work.",
+      history:"No, this is the first real problem we've had with it."
+    },
+    diagnose:"So... it probably needs that part replaced, right?",
+    findingProblem:"the outdoor fan motor isn't running, so the system can't get rid of heat"
+  },
+  maint: {
+    title:"Summer maintenance / tune-up (Member)",
+    blurb:"Loyal member, relaxed. Great for drilling the full process cleanly.",
+    type:"maintenance", name:"Maria", gender:"f",
+    scene:"You're at Maria's door for her summer maintenance visit. She's a longtime member and in a good mood.",
+    reason:"the summer maintenance visit",
+    facts:{
+      lived:"Twelve years — we raised the kids here.", purchase:"Yes, we bought it new.",
+      stay:"We'll probably be here forever, honestly.",
+      filters:"You all bring me the filters, so whenever you swap them.",
+      rooms:"The back bedroom is always a couple degrees warmer.",
+      thermostat:"We like it at 74 in the summer, 68 in the winter.",
+      bill:"Summer runs maybe $190 or so.",
+      noticed:"No issues really, it's been running fine since your last visit.",
+      history:"You replaced the capacitor a couple years ago, otherwise smooth."
+    },
+    diagnose:"So you're saying it's worth keeping an eye on that one?",
+    findingProblem:"the capacitor is reading low and the outdoor coil is pretty dirty"
+  },
+  noac: {
+    title:"No cooling, upstairs is 85° (Skeptical)",
+    blurb:"System is down, homeowner is hot, guarded and price-sensitive.",
+    type:"service", name:"Dave", gender:"m",
+    scene:"You're at Dave's door. His system is completely down and it's 85° upstairs. He's short, hot, and a little skeptical of contractors.",
+    reason:"the system stopped cooling completely",
+    facts:{
+      lived:"About 8 years.", purchase:"Yeah we bought it back then.",
+      stay:"Not sure, maybe a few more years. Depends.",
+      filters:"I change it when I remember. Why, is that the problem?",
+      rooms:"Upstairs is an oven. Downstairs isn't much better right now.",
+      thermostat:"Usually 70. Right now it says 85 and climbing.",
+      bill:"Too high already, that's why I'm not thrilled about spending more.",
+      noticed:"Died overnight. Woke up sweating.",
+      history:"Had another company out last year and I felt like they oversold me."
+    },
+    diagnose:"So what, the whole thing's shot? I don't want to get sold on a new system.",
+    findingProblem:"the compressor isn't starting and the capacitor is bulged"
+  }
+};
+
+const DIFFS = {
+  easy:   {title:"Easy",  d:"Warm, agreeable, few objections", objRate:0.15, warmth:2},
+  real:   {title:"Realistic", d:"Normal customer, some pushback", objRate:0.4, warmth:1},
+  tough:  {title:"Tough", d:"Skeptical, price-sensitive, tests you", objRate:0.75, warmth:0}
+};
+
+/* ---------- REAL OBJECTION BANK ----------
+   Pulled from the team's actual scored calls (Objection Database, Jun–Jul 2026).
+   Verbatim customer quotes, lightly de-filled; names removed. */
+var OBJ_LABELS = {price:"Price", stall:"Stall / Think About It", old_system:"System Too Old",
+  doubt:"Doubt / Distrust", spouse:"Spouse / Decision-Maker", competitor:"Competitor", other:"Other"};
+
+var OBJECTION_BANK = {
+ "price": [
+  "Gosh, that's a big number.",
+  "What does the new system cost?",
+  "Cuz I don't have 15 grand to buy a new one.",
+  "Then you think I should do the repair on this?",
+  "I don't want to make any big money expenses right now.",
+  "That's a lot of money for now. I'm going to talk to my warranty.",
+  "We need to think for us financial-wise. That's a lot of money for us.",
+  "If you could get us a quote, then we'll have a conversation about it.",
+  "That's a lot that has to be done. Boy, that's expensive for an 8-year-old unit.",
+  "No offense, you guys are expensive. I can get a handyman to do it a lot cheaper.",
+  "The price is very high. Am I right? I'm not ready right now.",
+  "We don't have a choice, but we don't have the money or the cash.",
+  "I'm not in a position to do anything right now money-wise. There's no way I can do anything with it.",
+  "I feel like I should just do this and hopefully it'll buy me time... I may not get the money we need.",
+  "It's just to spend that kind of money in this day and age, I think people need to be a little more frugal.",
+  "I don't plan on doing anything major to it. I'm not interested in buying a new system, that costs a lot of money.",
+  "Why don't we just let it go until it's all bust? This is way more expensive than I thought. When they blow, they blow."
+ ],
+ "stall": [
+  "I mean, what do you think?",
+  "You can't just email me or anything?",
+  "I think I'll just wait until next inspection.",
+  "Is there something that could be done today?",
+  "No, I'm not gonna do any repairs on those things.",
+  "If I need a day or two to think about it, does the price go up?",
+  "I need to process this for a night. Put a pin in it until tomorrow.",
+  "Can we call you and let you know, or call and set up the appointment?",
+  "I'm not ready to do this. Remember, I just moved in. I have a lot of expenses.",
+  "I still have to think about it. I'm gonna think about it.",
+  "How soon can you get us a quote, and an estimate for what the whole thing would look like?",
+  "I'm not going to pay for a service call per hour just to find out we need a new unit.",
+  "We're not making a fixing decision today. It takes time for us to get a conclusion on how we want to fix it.",
+  "I got to see what my availability is first. Next week's not good.",
+  "We're not putting any money into that. We're getting a new system. We've already decided."
+ ],
+ "old_system": [
+  "What are the options then?",
+  "No, there's no repair. It'd be a replacement.",
+  "That is a complete AC change, to change the whole unit.",
+  "What usually is the life of those? And what year are these?",
+  "Or wait until the compressor goes out, is that what you're saying?",
+  "How much of that could be covered by the warranty? We got the 10-year.",
+  "I knew I was due for a replacement. I just didn't want to do it this soon.",
+  "Instead of spending $6,900 on a compressor that'll probably go out in the next 5 years...",
+  "The compressor though, I don't know if I want to dig into that. I can't afford the new unit.",
+  "You're comparing $12,000 to $1,000. I'd rather have $1,000 for a couple months and see what happens.",
+  "I know in the long run we'll have to replace it, but really, let's look at some options first.",
+  "If I'm going to change this, I might as well change the whole system. There's no point keeping something old.",
+  "I'm looking to run them until they die. I want to push past 15 years if possible, then consider replacement.",
+  "Is that normal on a 13-year-old unit, or is that an issue? No normal maintenance would avoid that?"
+ ],
+ "doubt": [
+  "I don't need a third party.",
+  "It's your job to also try to sell some.",
+  "It kind of seems like you just want me to buy a new system.",
+  "If you can't find the leak, then it still costs that money?",
+  "The compressor is not pulling so much extra power that I'm uncomfortable.",
+  "When the fans go, that's when I replace them, so I'm not worried about those.",
+  "How bad is it? Is it catastrophic or is it just normal oil seepage?",
+  "If you replace the compressor and in 2 weeks nothing's working again, then what happens?",
+  "The compressor alone is $5,500, but you can get a new unit for almost the same.",
+  "If we move with just the control board, is it guaranteed that it's gonna work?",
+  "I don't have much problem putting that in today to get it running, but I just hope that's it.",
+  "He argued we needed a new system for like $6,000, and the system was built in 2022. It was a whole thing.",
+  "If I spend $3,000 for a leak repair, and in a couple years I spend $10,000 anyway, then I just wasted $3,000."
+ ],
+ "spouse": [
+  "My wife wants to talk to you.",
+  "No, I'll let the wife look over it too.",
+  "Let me think about it, talk to my wife, and then we go from there.",
+  "I'll have to talk this over with my son, and then I'll have to call.",
+  "I need to talk to my wife about it, and I really couldn't give her an exact moment.",
+  "It has to be when my husband comes back. I'll discuss it, probably tomorrow or the day after.",
+  "This is all gonna go through my brother. He's the money guy, he makes all the decisions.",
+  "Could you leave that estimate? I want to talk to my husband and my son about it.",
+  "I have to talk to my wife. She is more knowledgeable, she'll ask all the questions I asked.",
+  "I'm not signing any papers today, but I'm not going to go through the summer without getting something.",
+  "I'm not going to make any decisions today. I'll talk to my husband, but we'll let you know."
+ ],
+ "competitor": [
+  "Getting quote after quote.",
+  "How do you guys compare pricing to the other company?",
+  "I have a home warranty. Please use the different company.",
+  "There's a lot of companies that would do the repairs a lot cheaper.",
+  "I will get a quote, but at the same time I'll also get 3 other quotes.",
+  "Because I have a home warranty, are you guys contracted with them?",
+  "If the next guy is going to sell us a $2,000 unit, I'm probably going with $2,000.",
+  "That's part of the problem last time. Your costs were so high and always found something.",
+  "We're trying to get 3 quotes so we get the best price and the best deal.",
+  "I'll probably get somebody else to take a look too, at least for reference points.",
+  "They said the capacitor had burned out on the outside unit, and they replaced it.",
+  "I was going to call my real estate agent about a warranty for the first year."
+ ],
+ "other": [
+  "I have insurance for all that.",
+  "You don't want to give a free estimate? No.",
+  "I don't even want to be a member with you or anything.",
+  "Motor, I can replace myself. How much will it cost, $200?",
+  "I still don't understand why his involvement right now is necessary.",
+  "We used to have a home warranty, and that's what I was really banking on.",
+  "We have a home warranty and are trying to figure out how to balance that into this equation.",
+  "We're holding off on everything. Everything's still a question mark for you guys.",
+  "See, you're very high pressure. If I don't have the money to do it, would you?",
+  "We had that last year, then I had a heart event, so I can't afford any of that right now.",
+  "We're not looking for a sales pitch. We're looking for just a tune-up. Spare us the sales pitch."
+ ]
+};
+
+// which objection categories fit each scenario (for in-call injection)
+SCENARIOS.warmair.objCats = ["price","stall","old_system","doubt"];
+SCENARIOS.maint.objCats   = ["stall","doubt","spouse","competitor"];
+SCENARIOS.noac.objCats    = ["price","old_system","competitor","stall"];
+
+/* ---------- STATE ---------- */
+let SC=null, DF=null, phase=0, started=false, awaitingObjection=false;
+let voices=[], custVoice=null;
+const done = {}; // checkpoint flags
+let jargonHits=0, turns=0;
+let mode="call";                 // "call" or "gym"
+let curObjType=null;             // type of the objection currently on the table
+const GYM = {cat:"mixed", queue:[], i:0, results:[], gender:"m", name:"Homeowner"};
+
+/* ---------- CHECKPOINT DEFINITIONS (for coaching) ---------- */
+const RUBRIC = [
+  { key:"trust", name:"Building Trust (Welcome)", items:[
+      ["intro","Introduced yourself + company and got their name"],
+      ["parking","Checked the van / parking"],
+      ["permission","Asked permission to enter"],
+      ["floor","Wore floor protection"],
+      ["connect","Built a personal connection"],
+  ]},
+  { key:"expertise", name:"Demonstrating Expertise", items:[
+      ["reason","Confirmed the reason for the call"],
+      ["techq","Asked a brief technical question"],
+      ["today_intent","Confirmed intent to fix today"],
+      ["membership","Addressed membership status"],
+  ]},
+  { key:"expect", name:"Setting Expectations ★critical", items:[
+      ["exp_look","Set the 'Look' / diagnosis expectation"],
+      ["exp_eval","Explained the thorough evaluation"],
+      ["exp_time","Checked you had enough of their time"],
+      ["exp_permission","Got permission to share concerns"],
+      ["exp_approval","Covered approval + starting today"],
+      ["exp_5star","Planted the 5-star seed"],
+  ]},
+  { key:"questions", name:"Asking Good Questions ★critical", items:[
+      ["q_lived","How long they've lived in the home"],
+      ["q_purchase","Whether that's when they bought it"],
+      ["q_stay","How long they plan to stay"],
+      ["q_filters","Asked about air filters"],
+      ["q_rooms","Asked about hot/cold rooms"],
+      ["q_thermostat","Asked thermostat set point"],
+      ["q_bill","Asked about the power bill"],
+  ]},
+  { key:"checkin", name:"Check-Ins", items:[
+      ["checkin","Checked in with what you found"],
+      ["pictures","Referenced showing pictures"],
+      ["diagnose","Got the customer to diagnose"],
+      ["simple","Kept it simple (avoided jargon)"],
+  ]},
+  { key:"transition", name:"Transition to Van", items:[
+      ["trans_time","Committed to a specific time (~15 min)"],
+      ["trans_others","Invited others to join"],
+      ["trans_q","Checked for questions before leaving"],
+  ]},
+  { key:"options", name:"Presenting Options ★critical", items:[
+      ["reconnect","Reconnected before presenting"],
+      ["opt_link","Linked options to what they diagnosed"],
+      ["opt_price","Stated the prices with confidence"],
+      ["opt_spin","Handed it over: 'which works best for you today?'"],
+  ]},
+  { key:"objections", name:"Handling Objections ★critical", items:[
+      ["obj_empathy","Led with empathy on an objection"],
+      ["obj_question","Followed with a question, not a pitch"],
+  ]},
+  { key:"close", name:"The Close & Deliver", items:[
+      ["decision","Asked 'what do you like about that option?'"],
+      ["review","Asked for the 5-star review"],
+  ]},
+];
+
+/* ============================================================
+   BUILD SETUP UI
+   ============================================================ */
+let chosenScenario="warmair", chosenDiff="real";
+function buildSetup(){
+  const so=document.getElementById('scenarioOpts');
+  so.innerHTML="";
+  Object.entries(SCENARIOS).forEach(([id,s])=>{
+    const d=document.createElement('div');
+    d.className="opt"+(id===chosenScenario?" sel":"");
+    d.innerHTML=`<div class="t">${s.title}</div><div class="d">${s.blurb}</div>`;
+    d.onclick=()=>{chosenScenario=id; buildSetup();};
+    so.appendChild(d);
+  });
+  // Objection Gym tile
+  const g=document.createElement('div');
+  g.className="opt"+("gym"===chosenScenario?" sel":"");
+  g.style.borderStyle="dashed";
+  g.innerHTML=`<div class="t">🥊 Objection Gym</div><div class="d">Rapid-fire drill on real objections the team has received. Practice empathy → question → focus on helping.</div>`;
+  g.onclick=()=>{chosenScenario="gym"; buildSetup();};
+  so.appendChild(g);
+
+  const isGym = chosenScenario==="gym";
+  document.getElementById('diffWrap').classList.toggle('hidden', isGym);
+  document.getElementById('gymWrap').classList.toggle('hidden', !isGym);
+  document.getElementById('startBtn').textContent = isGym ? "🥊  Start objection drill" : "▶  Start new call";
+
+  const dfo=document.getElementById('diffOpts');
+  dfo.innerHTML="";
+  Object.entries(DIFFS).forEach(([id,s])=>{
+    const d=document.createElement('div');
+    d.className="opt"+(id===chosenDiff?" sel":"");
+    d.innerHTML=`<div class="t">${s.title}</div><div class="d">${s.d}</div>`;
+    d.onclick=()=>{chosenDiff=id; buildSetup();};
+    dfo.appendChild(d);
+  });
+
+  // Gym category tiles
+  const gco=document.getElementById('gymCatOpts');
+  gco.innerHTML="";
+  const cats=[["mixed","Mixed (all categories)"]].concat(Object.entries(OBJ_LABELS));
+  cats.forEach(([id,label])=>{
+    const count = id==="mixed" ? Object.values(OBJECTION_BANK).reduce((s,a)=>s+a.length,0) : OBJECTION_BANK[id].length;
+    const d=document.createElement('div');
+    d.className="opt"+(id===GYM.cat?" sel":"");
+    d.innerHTML=`<div class="t">${label} <span style="color:var(--muted);font-weight:600">· ${count}</span></div>`;
+    d.onclick=()=>{GYM.cat=id; buildSetup();};
+    gco.appendChild(d);
+  });
+}
+buildSetup();
+
+/* ============================================================
+   VOICE (speech synthesis + recognition)
+   ============================================================ */
+function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+if(window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+
+function pickVoice(gender){
+  if(!voices.length) loadVoices();
+  const en=voices.filter(v=>/en(-|_)/i.test(v.lang)||/english/i.test(v.name));
+  const pool=en.length?en:voices;
+  const femHints=/female|samantha|victoria|karen|moira|tessa|zira|susan|fiona|amelia|joana|zoe/i;
+  const malHints=/male|daniel|alex|fred|david|george|arthur|oliver|rishi|aaron/i;
+  let v = pool.find(x=> gender==="f"? femHints.test(x.name): malHints.test(x.name));
+  return v || pool[0] || null;
+}
+
+let speakOn=true;
+function speak(text, onend){
+  if(!speakOn || !window.speechSynthesis){ if(onend) onend(); return; }
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/\*/g,''));
+    if(!custVoice) custVoice=pickVoice(SC?SC.gender:"m");
+    if(custVoice) u.voice=custVoice;
+    u.rate=1.0; u.pitch = (SC && SC.gender==="f")?1.15:0.95;
+    u.onend=()=>{ if(onend) onend(); };
+    u.onerror=()=>{ if(onend) onend(); };
+    speechSynthesis.speak(u);
+  }catch(e){ if(onend) onend(); }
+}
+
+/* Speech recognition */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog=null, listening=false, recSupported=!!SR;
+if(recSupported){
+  recog=new SR();
+  recog.lang="en-US"; recog.interimResults=true; recog.continuous=false; recog.maxAlternatives=1;
+  let finalText="";
+  recog.onstart=()=>{ listening=true; finalText=""; micBtn.classList.add('listening'); };
+  recog.onresult=(e)=>{
+    let interim="", fin="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) fin+=t; else interim+=t;
+    }
+    if(fin) finalText+=fin;
+    entry.value=(finalText+interim).trim();
+    autoGrow();
+  };
+  recog.onerror=(e)=>{ listening=false; micBtn.classList.remove('listening');
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"){
+      voiceNote.textContent="Mic blocked — allow mic access or type."; }
+  };
+  recog.onend=()=>{ listening=false; micBtn.classList.remove('listening');
+    const t=entry.value.trim();
+    if(t){ send(t); }  // auto-send what was heard
+  };
+}
+function startListen(){
+  if(!recSupported){ voiceNote.textContent="Voice input not supported here — please type."; return; }
+  if(listening){ try{recog.stop()}catch(e){} return; }
+  try{ speechSynthesis && speechSynthesis.cancel(); entry.value=""; recog.start(); }
+  catch(e){}
+}
+
+/* ============================================================
+   TEXT ANALYSIS HELPERS
+   ============================================================ */
+function norm(s){ return " "+s.toLowerCase().replace(/[^a-z0-9%$'’ ]/g," ").replace(/\s+/g," ")+" "; }
+function any(t, arr){ return arr.some(k=> t.indexOf(k)>=0); }
+const Q=t=>t.indexOf("?")>=0;
+
+/* ============================================================
+   CORE ENGINE — homeowner response
+   ============================================================ */
+function techSays(raw){
+  const t=norm(raw); turns++;
+  const F=SC.facts, hits=[];
+  const isService = SC.type==="service";
+  let reply=[];
+
+  /* ---- jargon check (bad) ---- */
+  if(any(t,[" amp"," volt","superheat","subcool"," lra ","microfarad","capacitance"," ohm"])){ jargonHits++; }
+
+  /* ===================== PHASE 0: WELCOME & OBSERVATIONS ===================== */
+  // Intro + name
+  if(!done.intro && (any(t,["i'm ","i am ","my name","this is "]) && any(t,["sierra","with ","from "]) || any(t,["and you are","get your name","your name"]))){
+    done.intro=true;
+    reply.push(`Nice to meet you, I'm ${SC.name}.`);
+  }
+  // Parking
+  if(!done.parking && any(t,["park","van","truck","vehicle","blocking","driveway","out front"])){
+    done.parking=true; reply.push(rand([`Yeah, right there's fine.`,`That spot works, no problem.`]));
+  }
+  // Permission to enter
+  if(!done.permission && any(t,["come in","come inside","okay if i","mind if i","alright if i","permission","step inside","head in","enter"])){
+    done.permission=true; reply.push(rand([`Sure, come on in.`,`Yeah, please — come in.`]));
+  }
+  // Floor protection
+  if(!done.floor && any(t,["floor protect","shoe cover","boot cover","booties","protect your floor","cover my shoes","cover my boots"])){
+    done.floor=true; reply.push(rand([`Oh — thanks, I appreciate that.`,`Wow, most people don't do that. Thank you.`]));
+  }
+  // Personal connection
+  if(!done.connect && any(t,["how are you","how's your day","how has your day","nice ","love the","i saw","are you a","noticed you","that's a cool","great looking","beautiful home","weather","game last night","how's it going","how you doing"])){
+    done.connect=true; reply.push(rand([`Ha, yeah! Good eye. Doing alright, thanks for asking.`,`Oh yeah — appreciate you noticing. Been a long day but hanging in there.`]));
+  }
+  // Confirm reason
+  if(!done.reason && any(t,["here today","here for","looks like i'm here","out today","reason i'm","i'm out","is that right","correct"]) && phase===0){
+    done.reason=true;
+    reply.push(isService? `Yes — ${F.noticed}` : `That's right, you all do this for me every year.`);
+  }
+  // Brief technical question
+  if(!done.techq && any(t,["when did you","when did it","how long has","how has it","first notice","what's it doing","what's going on with","been running","start happening","how's the system"])){
+    done.techq=true;
+    reply.push(isService? F.noticed : `It's been running fine, no complaints.`);
+  }
+  // Intent to fix today (must reference fixing/getting it working, not just the word "today")
+  if(isService && !done.today_intent && any(t,["today"]) &&
+     any(t,["fix it","get it fixed","fixed today","up and running","get started","taken care of","get it running","get it working","working again","get it going","resolved"])){
+    if(phase===0){ done.today_intent=true; reply.push(rand([`Yeah, ideally today if you can.`,`Please — I need this working as soon as possible.`])); }
+  }
+  // Membership
+  if(!done.membership && any(t,["member","membership","maintenance plan","plan with us","sam member","sam program"])){
+    done.membership=true;
+    reply.push(SC.type==="maintenance"||SCENARIOS[chosenScenario]===SCENARIOS.maint
+      ? `Yeah, I've been a member for years.`
+      : rand([`No, I'm not a member.`,`I don't think I have a plan, no.`]));
+  }
+  // Setting expectations (agenda card)
+  if(any(t,["what you can expect","go over what","expectations","first thing","thorough evaluation","respectful of your time","enough time","anything else going on","make you aware","cause of concern","five-star","5 star","5-star","won't start any work","without your approval","build options","build a report","build some options","agenda"]) ){
+    if(any(t,["first thing","look and figure","look and diagnose","diagnose exactly","figure out exactly","figure out why"])) done.exp_look=true;
+    if(any(t,["thorough evaluation","full evaluation","whole system","reliability","cleanliness","safety","evaluate everything"])) done.exp_eval=true;
+    if(any(t,["respectful of your time","enough time","anything else going on","time-wise","mindful of time"])) done.exp_time=true;
+    if(any(t,["make you aware","cause of concern","share any concerns","let you know if","notice anything"])) done.exp_permission=true;
+    if(any(t,["approval","without your approval","won't start","get started today","start today","authorize"])) done.exp_approval=true;
+    if(any(t,["five-star","5 star","5-star","stop me","let me know if","meeting your expectations"])) done.exp_5star=true;
+    if((done.exp_look||done.exp_eval||done.exp_time||done.exp_permission||done.exp_approval||done.exp_5star)){
+      reply.push(rand([`Okay, that sounds good.`,`Sure, that all makes sense. Thanks for walking me through it.`,`Got it — that's fair.`]));
+    }
+  }
+
+  /* ===================== PHASE 1: FINDINGS & CHECK-IN ===================== */
+  if(any(t,["how long have you lived","lived in the home","lived here","how long you been here"])){ done.q_lived=true; reply.push(F.lived); }
+  if(any(t,["when you purchased","did you buy","when you bought","that when you bought","own the home","are you the owner"])){ done.q_purchase=true; reply.push(F.purchase); }
+  if(any(t,["plan on staying","plan to stay","how long do you plan","staying in the home","see yourself staying"])){ done.q_stay=true; reply.push(F.stay); }
+  if(any(t,["filter"])){ done.q_filters=true; reply.push(F.filters); }
+  if(any(t,["rooms","hotter or colder","hot spots","uneven","certain room","any room"])){ done.q_rooms=true; reply.push(F.rooms); }
+  if(any(t,["set your thermostat","thermostat set","what temperature","keep it set","keep the house","set it to","set it at"])){ done.q_thermostat=true; reply.push(F.thermostat); }
+  if(any(t,["power bill","energy bill","utility","electric bill","electricity bill","monthly bill"])){ done.q_bill=true; reply.push(F.bill); }
+
+  // Knock / return preference
+  if(any(t,["knock or just let myself","knock or let myself","prefer i knock"])){ reply.push(`Just come on in when you're ready.`); }
+
+  // Check-in / findings
+  if(any(t,["what i found","what i noticed","let me show you","come take a look","want to show you","found something","take a look at this","noticed a couple","here's what i saw","let me walk you through"])){
+    done.checkin=true;
+    reply.push(rand([`Okay... what did you find?`,`Uh oh. Show me.`,`Alright, I'm looking.`]));
+  }
+  if(any(t,["picture","photo","see here in this","this image","this photo","snapped a"])){ done.pictures=true; }
+  // Diagnose prompt
+  if(any(t,["what do you think we should","what do you think we need","what do you think that means","would you say","you can see how","that make sense","see what i mean","what do you think about that"])){
+    done.diagnose=true; reply.push(SC.diagnose);
+  }
+  // Transition to van
+  if(any(t,["head out to my van","out to my van","go build","build some options","build your options","put together","be back in","15 minutes","fifteen minutes","20 minutes","come back and we'll","go over everything together"])){
+    if(any(t,["15 minutes","fifteen minutes","20 minutes","twenty minutes","about "])) done.trans_time=true;
+    if(any(t,["anyone else","someone else","anybody else","invite","facetime","on the phone","part of this conversation","part of the conversation"])) done.trans_others=true;
+    reply.push(rand([`Sounds good, I'll be right here.`,`Okay, take your time.`]));
+  }
+  if(any(t,["before i step out","before i go build","any questions before","questions do you have","anything before i"])){ done.trans_q=true; reply.push(rand([`No, I think I'm good for now.`,`Nope, go ahead.`])); }
+
+  /* ===================== PHASE 2: OPTIONS & CLOSE ===================== */
+  // Reconnect
+  if(any(t,["thank you for your time","appreciate your time","thanks for your time","thank you for having me","appreciate you letting me","really want to thank"])){ done.reconnect=true; reply.push(rand([`Of course, no problem.`,`Sure thing.`])); }
+  if(any(t,["about sierra","love working","upfront pricing","final price","final prices","flat rate","flat pricing","really cool about"])){ done.reconnect=true; reply.push(`Oh, that's good to know, actually.`); }
+
+  // Present options — link
+  if(any(t,["option a","immediate repair","option b","future repair","option c","system update","remember when i showed","the part i showed you","that motor i showed","that part we talked","the motor i showed"])){
+    done.opt_link=true;
+    reply.push(rand([`Okay, I follow you.`,`Right, the part you showed me.`,`Mm-hm, that makes sense.`]));
+  }
+  // Present options — price stated
+  if(any(t,["$","dollars","thousand","hundred","the cost","the price is","comes to","priced at","total is"])){
+    done.opt_price=true;
+    maybeObjection(reply);
+  }
+  // Spin it
+  if(any(t,["which option works best","take a look and let me know","what works best for you today","which one works best","let me know which","which of these","what would you like to do"])){
+    done.opt_spin=true;
+    reply.push(rand([`Hmm. Let me look these over.`,`Okay, give me a second to think.`]));
+    maybeObjection(reply, true);
+  }
+  // Objection handling detection (empathy + question)
+  if(awaitingObjection || done.obj_pending){
+    const empathy=any(t,["understand","i hear you","totally get","i get it","makes sense","i know","that's fair","completely fair","no rush","take your time","appreciate you being"]);
+    const question=Q(t)||any(t,["can i ask","what is it","what's holding","how do you feel","what are you thinking","mind if i ask","what would","which part"]);
+    if(empathy){ done.obj_empathy=true; }
+    if(empathy && question){ done.obj_question=true; awaitingObjection=false; done.obj_pending=false;
+      reply.push(rand([`Yeah... I guess my main thing is just the money. But I hear what you're saying.`,`I mean, when you put it that way. It's just a lot at once.`]));
+    } else if(empathy){
+      reply.push(rand([`...yeah.`,`I appreciate that.`]));
+    }
+  }
+
+  // The decision / commitment
+  if(any(t,["what do you like about","great choice","good choice","perfect choice","what made you pick","what do you like most"])){
+    done.decision=true;
+    reply.push(rand([`Well... I just want it done right and not have to worry about it. Let's do it.`,`I like that it fixes the real problem. Yeah, let's go with that.`]));
+  }
+  // SAM membership at close
+  if(any(t,["sam member","become a member","membership benefits","join our","sign you up"]) && phase===2){ reply.push(`Tell me a little about what that includes.`); }
+  // Review
+  if(any(t,["five-star review","5-star review","5 star review","leave me a review","leave a review","tap your phone","tap this badge","google review","mention my name","did i give you five"])){
+    done.review=true;
+    reply.push(rand([`Absolutely, you earned it. Happy to leave you a review.`,`For sure — you did a great job today.`]));
+  }
+  if(any(t,["thank you","thanks","appreciate you","have a great"]) && phase===2 && done.review){ reply.push(`Thank you! Take care.`); }
+
+  /* ---- fallback if nothing recognized ---- */
+  if(reply.length===0){
+    reply.push(fallback(t));
+  }
+
+  // Trim to a natural length (max 2 sentences of homeowner)
+  let out = reply.slice(0,2).join(" ");
+  addMsg("cust", out);
+  hintNudge();
+  return out;
+}
+
+/* random objection injector — pulls a REAL objection from the team's bank */
+function maybeObjection(reply, force){
+  const roll=Math.random();
+  if(force || roll < DF.objRate){
+    awaitingObjection=true; done.obj_pending=true;
+    const cats = (SC && SC.objCats) ? SC.objCats : ["price","stall","old_system"];
+    const c = rand(cats);
+    curObjType = c;
+    reply.push(rand(OBJECTION_BANK[c]));
+  }
+}
+
+/* fallback responses keep it human */
+function fallback(t){
+  if(Q(t)) return rand([`Hm, good question. Honestly I'm not totally sure.`,`Yeah... what do you think?`,`I'm not sure, you're the expert.`]);
+  if(any(t,["sorry","apolog"])) return `Oh, no worries at all.`;
+  if(any(t,["thank"])) return `Of course.`;
+  return rand([`Okay.`,`Mm-hm.`,`Alright, go on.`,`Sure.`,`Right.`]);
+}
+
+/* gentle hint if the tech seems stuck (easy mode only, occasional) */
+let lastNudge=-99;
+function hintNudge(){
+  if(chosenDiff!=="easy") return;
+  if(turns-lastNudge<4) return;
+  // if in phase 0 and expectations never set after several turns
+}
+
+function rand(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+/* ============================================================
+   COACHING  (word bands — never numeric scores)
+   ============================================================ */
+function band(ratio){
+  if(ratio>=0.8) return "Strong";
+  if(ratio>=0.55) return "Solid";
+  if(ratio>=0.3) return "Moderate";
+  return "Weak";
+}
+const bandColor={Strong:"#1f9d55",Solid:"#2f80ed",Moderate:"#e0a80d",Weak:"#d64545"};
+
+// which rubric groups belong to which practice phase
+const PHASE_GROUPS = [
+  ["trust","expertise","expect"],
+  ["questions","checkin","transition"],
+  ["options","objections","close"]
+];
+
+function coach(scope){ // scope: 'phase' or 'full'
+  // "Kept it simple" is credited when no jargon was used
+  done.simple = (jargonHits===0);
+  const groups = scope==="full" ? RUBRIC.map(g=>g.key) : PHASE_GROUPS[phase];
+  let html = `<div class="coachHead">🧭 ${scope==="full"?"Full-Call FSG Debrief":"Coaching — "+["Welcome & Observations","Findings & Check-In","Options & Close"][phase]}</div>`;
+  groups.forEach(gk=>{
+    const g=RUBRIC.find(x=>x.key===gk);
+    const hitItems=g.items.filter(([k])=>done[k]);
+    const ratio=hitItems.length/g.items.length;
+    const b=band(ratio);
+    html+=`<div class="band"><div class="lab">${g.name}</div><div class="pill ${b}">${b}</div>`;
+    html+=`<div class="bar"><i style="width:${Math.round(ratio*100)}%;background:${bandColor[b]}"></i></div>`;
+    // missed highlights
+    const missed=g.items.filter(([k])=>!done[k]);
+    if(missed.length && ratio<1){
+      html+=`<div class="fb miss">Work on: ${missed.slice(0,3).map(m=>m[1]).join("; ")}${missed.length>3?"…":""}</div>`;
+    } else if(ratio===1){
+      html+=`<div class="fb">Nailed every checkpoint here. 👏</div>`;
+    }
+    html+=`</div>`;
+  });
+  if(scope==="full"){
+    if(jargonHits>0) html+=`<div class="fb miss" style="margin-top:6px">⚠️ You used technical jargon ${jargonHits} time${jargonHits>1?"s":""} during check-ins — remember, keep it simple (no amps/volts/superheat).</div>`;
+    const critical=["expect","questions","options","objections"];
+    const critAvg=critical.reduce((s,k)=>{const g=RUBRIC.find(x=>x.key===k);return s+g.items.filter(([kk])=>done[kk]).length/g.items.length;},0)/critical.length;
+    html+=`<div class="fb" style="margin-top:8px;font-weight:700">Overall on the 4 SILO critical actions: <span style="color:${bandColor[band(critAvg)]}">${band(critAvg)}</span></div>`;
+    html+=`<div class="fb">Tip: the four critical actions drive ~80% of your success on a call — expectations, good questions, clear options, and objection handling.</div>`;
+  }
+  addMsg("coach", html, true);
+}
+
+/* ============================================================
+   UI PLUMBING
+   ============================================================ */
+const log=document.getElementById('log');
+const entry=document.getElementById('entry');
+const micBtn=document.getElementById('micBtn');
+const sendBtn=document.getElementById('sendBtn');
+const voiceNote=document.getElementById('voiceNote');
+
+function addMsg(who, text, isHtml){
+  const d=document.createElement('div');
+  d.className="msg "+who;
+  if(who==="cust"){ const nm = mode==="gym" ? GYM.name : (SC?SC.name:"Homeowner"); text=`<span class="who">${nm}</span>`+esc(text); isHtml=true; }
+  else if(who==="tech"){ text=`<span class="who">You</span>`+esc(text); isHtml=true; }
+  if(isHtml) d.innerHTML=text; else d.textContent=text;
+  log.appendChild(d);
+  log.scrollTop=log.scrollHeight;
+}
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function send(raw){
+  const text=(raw!=null?raw:entry.value).trim();
+  if(!text) return;
+  entry.value=""; autoGrow();
+  addMsg("tech", text);
+  if(mode==="gym"){ gymHandle(text); return; }   // gym manages its own speech + advancing
+  const reply = techSays(text);
+  speak(reply, ()=>{ if(document.getElementById('autoChk').checked && recSupported && started){ setTimeout(startListen,250); } });
+}
+
+function autoGrow(){ entry.style.height="auto"; entry.style.height=Math.min(entry.scrollHeight,110)+"px"; }
+entry.addEventListener('input', autoGrow);
+entry.addEventListener('keydown', e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+sendBtn.onclick=()=>send();
+micBtn.onclick=()=>startListen();
+
+document.getElementById('speakChk').onchange=e=>{ speakOn=e.target.checked; if(!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
+document.getElementById('coachBtn').onclick=()=>{ mode==="gym" ? gymSummary(false) : coach('phase'); };
+document.getElementById('endBtn').onclick=()=>{
+  if(mode==="gym"){ gymSummary(true); addMsg("sys","— End of drill —"); }
+  else { coach('full'); addMsg("sys","— End of call —"); }
+  started=false;
+};
+document.getElementById('restartBtn').onclick=()=>resetToSetup();
+document.getElementById('startBtn').onclick=startCall;
+
+// tabs
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.onclick=()=>{ phase=+b.dataset.ph;
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('act'));
+    b.classList.add('act');
+    document.getElementById('scene').textContent = PHASE_HINT[phase];
+  };
+});
+const PHASE_HINT=[
+  "STEP 1–2 · Build trust: empathy, expertise, and set clear expectations with your agenda card.",
+  "STEP 3 · Ask good questions, do your evaluation, and check in — get the customer to diagnose.",
+  "STEP 4–5 · Reconnect, present A/B/C options, handle objections, and close with the review."
+];
+
+/* ============================================================
+   OBJECTION GYM  —  drill real objections from the team's bank
+   ============================================================ */
+const GYM_REACT = {
+  Strong:["Yeah... okay, that actually makes sense.","Hm. When you put it that way, alright.","Okay, I hadn't thought about it like that."],
+  Solid:["Okay... yeah, I hear you.","Alright, that's fair I guess.","Mm. Maybe you're right."],
+  Moderate:["I don't know... maybe.","Yeah, but I'm still not sure.","Eh. I'd still have to think about it."],
+  Weak:["...I still don't think so.","Yeah, that didn't really change my mind.","No, I'm good. I don't need the pitch."]
+};
+
+function buildGymQueue(){
+  let cats = GYM.cat==="mixed" ? Object.keys(OBJECTION_BANK) : [GYM.cat];
+  let pool=[];
+  cats.forEach(c=> OBJECTION_BANK[c].forEach(q=> pool.push({type:c,quote:q})));
+  // shuffle
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  GYM.queue = pool.slice(0, GYM.cat==="mixed"?12:10);
+  GYM.i=0; GYM.results=[];
+}
+
+function startGym(){
+  mode="gym"; started=true; awaitingObjection=false;
+  GYM.gender = Math.random()<0.5?"m":"f";
+  GYM.name = GYM.gender==="m" ? "Homeowner" : "Homeowner";
+  custVoice = pickVoice(GYM.gender);
+  buildGymQueue();
+  log.innerHTML="";
+  document.getElementById('setup').style.display="none";
+  document.getElementById('call').style.display="flex";
+  document.getElementById('tabs').style.display="none";       // phases don't apply in gym
+  voiceNote.textContent = recSupported ? "🎤 voice ready" : "⌨️ type-only on this device";
+  const catName = GYM.cat==="mixed" ? "Mixed — all categories" : OBJ_LABELS[GYM.cat];
+  addMsg("sys", `🥊 Objection Gym · ${catName}. ${GYM.queue.length} real objections from the team. Handle each one: empathy → a question → focus on helping.`);
+  if(window.speechSynthesis){ try{ speechSynthesis.resume(); }catch(e){} }
+  nextObjection();
+}
+
+function nextObjection(){
+  if(GYM.i>=GYM.queue.length){ gymSummary(true); addMsg("sys","— Drill complete —"); started=false; return; }
+  const o=GYM.queue[GYM.i]; curObjType=o.type;
+  document.getElementById('scene').textContent =
+    `Objection ${GYM.i+1} of ${GYM.queue.length}  ·  ${OBJ_LABELS[o.type]}`;
+  addMsg("cust", o.quote);
+  speak(o.quote, ()=>{ if(document.getElementById('autoChk').checked && recSupported && started){ setTimeout(startListen,250); } });
+}
+
+// evaluate a single objection response against FSG objection-handling principles
+function evalObjResponse(t, type){
+  let empathy = any(t,["understand","i hear you","i get it","totally get","makes sense","i know","that's fair","completely fair","no rush","take your time","appreciate you","i'm sorry","i can see why","i don't blame you","that's a great question","great question"]);
+  const question = Q(t) || any(t,["can i ask","what is it","what's holding","how do you feel","what are you thinking","mind if i ask","what would","which part","help me understand","tell me more","what matters most","when you say"]);
+  const helping = any(t,["help you","what's important","important to you","your comfort","comfortable","reliable","peace of mind","your family","keep you","protect","save you","best for you","what you're looking for","your goals","take care of you","the right"]);
+  // "embrace the price" — agreeing with a price / old-system objection IS the empathetic move here
+  const embrace = any(t,["you're right","you are right","i agree","it is a lot","that is a lot","especially for","i don't disagree","fair point","you're not wrong"]);
+  if(embrace && (type==="price"||type==="old_system")) empathy=true;
+  // defensive / pure-pitch markers (drag it down)
+  const pushy = any(t,["you have to","you need to","trust me","like i said","just sign","you should really","if you don't"]) && !empathy;
+
+  let score=0, tips=[];
+  if(empathy) score++; else tips.push("Lead with empathy first");
+  if(question) score++; else tips.push("Ask a question — don't pitch back");
+  if(helping) score++; else tips.push("Tie it back to helping them / what matters to them");
+  if(pushy) score=Math.max(0,score-1);
+
+  const band = score>=3?"Strong":score>=2?"Solid":score>=1?"Moderate":"Weak";
+  return {band, empathy, question, helping, embrace, tips};
+}
+
+function gymHandle(text){
+  const t=norm(text);
+  const type=curObjType||"other";
+  const r=evalObjResponse(t, type);
+  GYM.results.push({type, band:r.band});
+  // homeowner reaction
+  const react=rand(GYM_REACT[r.band]);
+  addMsg("cust", react);
+  // instant micro-feedback
+  const chips = [
+    r.empathy?"✅ empathy":"⬜ empathy",
+    r.question?"✅ question":"⬜ question",
+    r.helping?"✅ focus on helping":"⬜ focus on helping"
+  ].join(" &nbsp; ");
+  let fb = `<div class="coachHead" style="font-size:13px">${bandPill(r.band)} &nbsp; response</div><div class="fb">${chips}</div>`;
+  if(r.tips.length && r.band!=="Strong") fb+=`<div class="fb miss">Try: ${r.tips.slice(0,2).join("; ")}.</div>`;
+  else if(r.band==="Strong") fb+=`<div class="fb">Textbook FSG — empathy, a question, and you kept the focus on helping. 👏</div>`;
+  addMsg("coach", fb, true);
+  GYM.i++;
+  // speak the reaction, then move to the next objection when it finishes
+  speak(react, ()=>{ setTimeout(()=>{ if(started && mode==="gym") nextObjection(); }, 300); });
+  return react;
+}
+
+function bandPill(b){ return `<span class="pill ${b}">${b}</span>`; }
+
+function gymSummary(full){
+  const res=GYM.results;
+  if(!res.length){ addMsg("coach", `<div class="coachHead">🥊 Objection Gym</div><div class="fb">No objections handled yet — respond to the one on the table.</div>`, true); return; }
+  const order={Strong:3,Solid:2,Moderate:1,Weak:0};
+  const avg=res.reduce((s,r)=>s+order[r.band],0)/res.length;
+  const overall = avg>=2.4?"Strong":avg>=1.6?"Solid":avg>=0.8?"Moderate":"Weak";
+  // per-category breakdown
+  const byCat={};
+  res.forEach(r=>{ (byCat[r.type]=byCat[r.type]||[]).push(order[r.band]); });
+  let html=`<div class="coachHead">🥊 Objection Gym — ${full?"Drill Summary":"Progress"}</div>`;
+  html+=`<div class="band"><div class="lab">Overall objection handling (${res.length} handled)</div>${bandPill(overall)}</div>`;
+  Object.keys(byCat).forEach(c=>{
+    const a=byCat[c].reduce((s,x)=>s+x,0)/byCat[c].length;
+    const b=a>=2.4?"Strong":a>=1.6?"Solid":a>=0.8?"Moderate":"Weak";
+    html+=`<div class="band"><div class="lab">${OBJ_LABELS[c]} <span style="color:var(--muted)">×${byCat[c].length}</span></div>${bandPill(b)}</div>`;
+  });
+  html+=`<div class="fb" style="margin-top:8px">FSG objection framework: <b>empathy → ask a question → focus on helping</b>. On price &amp; old-system objections, it's okay to <b>embrace the price</b> ("you're right, especially for this old system").</div>`;
+  addMsg("coach", html, true);
+}
+
+/* ---------- start / reset ---------- */
+function startCall(){
+  if(chosenScenario==="gym"){ startGym(); return; }
+  mode="call";
+  SC=Object.assign({}, SCENARIOS[chosenScenario]);
+  DF=DIFFS[chosenDiff];
+  phase=0; started=true; awaitingObjection=false; jargonHits=0; turns=0;
+  Object.keys(done).forEach(k=>delete done[k]);
+  custVoice=pickVoice(SC.gender);
+  log.innerHTML="";
+  document.getElementById('setup').style.display="none";
+  document.getElementById('call').style.display="flex";
+  document.getElementById('tabs').style.display="flex";       // ensure tabs visible (gym hides them)
+  document.querySelectorAll('#tabs button').forEach((x,i)=>x.classList.toggle('act',i===0));
+  document.getElementById('scene').textContent=SC.scene;
+  voiceNote.textContent = recSupported ? "🎤 voice ready" : "⌨️ type-only on this device";
+  addMsg("sys", `Scenario: ${SC.title} · ${DF.title} mode. The door is in front of you — begin your Welcome Step.`);
+  // small primer so speech engine is "unlocked" by the start gesture
+  if(window.speechSynthesis){ try{ speechSynthesis.resume(); }catch(e){} }
+}
+function resetToSetup(){
+  started=false; mode="call";
+  if(window.speechSynthesis) speechSynthesis.cancel();
+  if(listening){ try{recog.stop()}catch(e){} }
+  document.getElementById('call').style.display="none";
+  document.getElementById('setup').style.display="block";
+  buildSetup();
+}
+</script>
+</body>
+</html>
