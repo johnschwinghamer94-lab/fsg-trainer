@@ -135,6 +135,7 @@
     <div class="toggles">
       <label><input type="checkbox" id="speakChk" checked> 🔊 Speak replies</label>
       <label><input type="checkbox" id="autoChk"> 🎙️ Auto-listen</label>
+      <label><input type="checkbox" id="jarvisChk"> 🎩 JARVIS voice</label>
       <span id="voiceNote" class="notice" style="margin-left:auto"></span>
     </div>
     <div class="row">
@@ -494,16 +495,28 @@ function pickVoice(gender){
   let v = pool.find(x=> gender==="f"? femHints.test(x.name): malHints.test(x.name));
   return v || pool[0] || null;
 }
+// JARVIS-style: a refined British male voice (Daniel / Google UK English Male / Microsoft George/Ryan)
+function britishVoice(){
+  if(!voices.length) loadVoices();
+  const gb=voices.filter(v=>/en-?gb/i.test(v.lang)||/uk english|british|great britain/i.test(v.name));
+  const male=gb.find(v=>/male|daniel|george|ryan|arthur|oliver/i.test(v.name));
+  return male || gb[0] || pickVoice("m");
+}
 
-let speakOn=true;
+let speakOn=true, jarvisOn=false;
 function speak(text, onend){
   if(!speakOn || !window.speechSynthesis){ if(onend) onend(); return; }
   try{
     speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text.replace(/\*/g,''));
-    if(!custVoice) custVoice=pickVoice(SC?SC.gender:"m");
-    if(custVoice) u.voice=custVoice;
-    u.rate=1.0; u.pitch = (SC && SC.gender==="f")?1.15:0.95;
+    if(jarvisOn){
+      const v=britishVoice(); if(v) u.voice=v;
+      u.rate=0.9; u.pitch=0.82;               // calm, measured, composed — JARVIS
+    } else {
+      if(!custVoice) custVoice=pickVoice(SC?SC.gender:"m");
+      if(custVoice) u.voice=custVoice;
+      u.rate=1.0; u.pitch=(SC && SC.gender==="f")?1.15:0.95;
+    }
     u.onend=()=>{ if(onend) onend(); };
     u.onerror=()=>{ if(onend) onend(); };
     speechSynthesis.speak(u);
@@ -894,6 +907,8 @@ sendBtn.onclick=()=>send();
 micBtn.onclick=()=>startListen();
 
 document.getElementById('speakChk').onchange=e=>{ speakOn=e.target.checked; if(!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
+document.getElementById('jarvisChk').onchange=e=>{ jarvisOn=e.target.checked; custVoice=null;
+  if(jarvisOn && window.speechSynthesis){ speak("At your service."); } };
 document.getElementById('coachBtn').onclick=()=>{ mode==="gym" ? gymSummary(false) : coach('phase'); };
 document.getElementById('endBtn').onclick=()=>{
   if(mode==="gym"){ gymSummary(true); addMsg("sys","— End of drill —"); }
