@@ -562,7 +562,7 @@ function startListen(){
 /* ============================================================
    TEXT ANALYSIS HELPERS
    ============================================================ */
-function norm(s){ return " "+s.toLowerCase().replace(/[^a-z0-9%$'’ ]/g," ").replace(/\s+/g," ")+" "; }
+function norm(s){ return " "+s.toLowerCase().replace(/[^a-z0-9%$'’? ]/g," ").replace(/\s+/g," ")+" "; }
 function any(t, arr){ return arr.some(k=> t.indexOf(k)>=0); }
 const Q=t=>t.indexOf("?")>=0;
 
@@ -587,8 +587,8 @@ function techSays(raw){
     done.intro=true;
     reply.push(`Nice to meet you, I'm ${SC.name}.`);
   }
-  // Parking
-  if(!done.parking && any(t,["park","van","truck","vehicle","blocking","driveway","out front"])){
+  // Parking (parking-specific words only, so "head to the van" doesn't trip it)
+  if(!done.parking && phase===0 && any(t,["park","parked","parking","blocking","in the way","driveway","out front","where i left","spot okay","okay where i"])){
     done.parking=true; reply.push(rand([`Yeah, right there's fine.`,`That spot works, no problem.`]));
   }
   // Permission to enter
@@ -644,34 +644,37 @@ function techSays(raw){
   }
 
   /* ===================== PHASE 1: FINDINGS & CHECK-IN ===================== */
-  if(any(t,["how long have you lived","lived in the home","lived here","how long you been here"])){ done.q_lived=true; reply.push(F.lived); }
-  if(any(t,["when you purchased","did you buy","when you bought","that when you bought","own the home","are you the owner"])){ done.q_purchase=true; reply.push(F.purchase); }
-  if(any(t,["plan on staying","plan to stay","how long do you plan","staying in the home","see yourself staying"])){ done.q_stay=true; reply.push(F.stay); }
+  if(any(t,["how long have you lived","lived in the home","lived here","how long you been here","been in this house","been in this home","been in the house","in this house","how long you had the house","how long you've been here","own this house long"])){ done.q_lived=true; reply.push(F.lived); }
+  if(any(t,["when you purchased","did you buy","when you bought","that when you bought","own the home","are you the owner","you the owner","buy it back then","buy or rent","did you rent"])){ done.q_purchase=true; reply.push(F.purchase); }
+  if(any(t,["plan on staying","plan to stay","planning to stay","planning on staying","how long do you plan","staying in the home","staying here","stay here","stay a while","see yourself staying","how long you'll stay","here for the long","long-term plan","forever home"])){ done.q_stay=true; reply.push(F.stay); }
   if(any(t,["filter"])){ done.q_filters=true; reply.push(F.filters); }
-  if(any(t,["rooms","hotter or colder","hot spots","uneven","certain room","any room"])){ done.q_rooms=true; reply.push(F.rooms); }
-  if(any(t,["set your thermostat","thermostat set","what temperature","keep it set","keep the house","set it to","set it at"])){ done.q_thermostat=true; reply.push(F.thermostat); }
-  if(any(t,["power bill","energy bill","utility","electric bill","electricity bill","monthly bill"])){ done.q_bill=true; reply.push(F.bill); }
+  if(any(t,["rooms","hotter or colder","hot spots","uneven","certain room","any room","never cool","won't cool","don't cool","stay hot","stay warm","harder to cool"])){ done.q_rooms=true; reply.push(F.rooms); }
+  if(any(t,["set your thermostat","thermostat set","what temperature","keep it set","keep the house","keep it at","set it to","set it at","like to keep it","comfortable at"])){ done.q_thermostat=true; reply.push(F.thermostat); }
+  if(any(t,["power bill","energy bill","utility","electric bill","electricity bill","monthly bill","cost to run","your bill","light bill"])){ done.q_bill=true; reply.push(F.bill); }
 
   // Knock / return preference
   if(any(t,["knock or just let myself","knock or let myself","prefer i knock"])){ reply.push(`Just come on in when you're ready.`); }
 
   // Check-in / findings
-  if(any(t,["what i found","what i noticed","let me show you","come take a look","want to show you","found something","take a look at this","noticed a couple","here's what i saw","let me walk you through"])){
+  if(any(t,["what i found","what i noticed","let me show you","come take a look","come here real quick","come here for a sec","want to show you","show you something","found something","take a look at this","look at this","noticed a couple","here's what i saw","here's what i found","let me walk you through","see this right here","see this part"])){
     done.checkin=true;
-    reply.push(rand([`Okay... what did you find?`,`Uh oh. Show me.`,`Alright, I'm looking.`]));
+    reply.push(rand([`Okay... what did you find?`,`Uh oh. Show me.`,`Alright, I'm looking.`,`Okay, what am I looking at?`]));
   }
-  if(any(t,["picture","photo","see here in this","this image","this photo","snapped a"])){ done.pictures=true; }
-  // Diagnose prompt
-  if(any(t,["what do you think we should","what do you think we need","what do you think that means","would you say","you can see how","that make sense","see what i mean","what do you think about that"])){
+  if(any(t,["picture","photo","see here in this","this image","this photo","snapped a","took a pic","here's a shot"])){ done.pictures=true; }
+  // Diagnose prompt — get the customer to say what's wrong
+  if(any(t,["what do you think","think happens","what happens when","think that means","think it means","think it needs","think we should","think we need","would you say","you can see how","that make sense","see what i mean","what does that tell you","what would you do"])){
     done.diagnose=true; reply.push(SC.diagnose);
   }
   // Transition to van
-  if(any(t,["head out to my van","out to my van","go build","build some options","build your options","put together","be back in","15 minutes","fifteen minutes","20 minutes","come back and we'll","go over everything together"])){
-    if(any(t,["15 minutes","fifteen minutes","20 minutes","twenty minutes","about "])) done.trans_time=true;
-    if(any(t,["anyone else","someone else","anybody else","invite","facetime","on the phone","part of this conversation","part of the conversation"])) done.trans_others=true;
-    reply.push(rand([`Sounds good, I'll be right here.`,`Okay, take your time.`]));
+  if(any(t,["head out to my van","out to my van","to my van","to the van","head to the van","back to the van","go build","build some options","build your options","put together","put some options","couple options","couple of options","be back in","be right back","right back","give me 15","give me like 15","give me about 15","15 minutes","fifteen minutes","20 minutes","come back and we'll","go over everything together","go over it together"])){
+    if(any(t,["15 minutes","fifteen minutes","20 minutes","twenty minutes","about 15","like 15","give me 15","about 20","15 and","couple minutes"])) done.trans_time=true;
+    reply.push(rand([`Sounds good, I'll be right here.`,`Okay, take your time.`,`Alright, I'm not going anywhere.`]));
   }
-  if(any(t,["before i step out","before i go build","any questions before","questions do you have","anything before i"])){ done.trans_q=true; reply.push(rand([`No, I think I'm good for now.`,`Nope, go ahead.`])); }
+  // Invite others (independent — a tech can invite others without the full transition phrasing)
+  if(!done.trans_others && any(t,["anyone else","someone else","anybody else","anyone who wants","invite","involve anyone","facetime","on the phone","part of this conversation","part of the conversation","want in on this","in on this","be part of this","hear this too"])){
+    done.trans_others=true; reply.push(rand([`No, it's just me today.`,`I might loop my wife in, but go ahead.`,`Nah, just me — go for it.`]));
+  }
+  if(phase!==2 && any(t,["before i step out","before i go build","before i leave you","any questions before","questions before i","questions do you have","anything before i","what questions do you have"])){ done.trans_q=true; reply.push(rand([`No, I think I'm good for now.`,`Nope, go ahead.`,`Not right now — thanks though.`])); }
 
   /* ===================== PHASE 2: OPTIONS & CLOSE ===================== */
   // Reconnect
@@ -679,12 +682,12 @@ function techSays(raw){
   if(any(t,["about sierra","love working","upfront pricing","final price","final prices","flat rate","flat pricing","really cool about"])){ done.reconnect=true; reply.push(`Oh, that's good to know, actually.`); }
 
   // Present options — link
-  if(any(t,["option a","immediate repair","option b","future repair","option c","system update","remember when i showed","the part i showed you","that motor i showed","that part we talked","the motor i showed"])){
+  if(any(t,["option a","first option","immediate repair","option b","second option","future repair","option c","system update","remember when i showed","the part i showed you","that motor i showed","the motor i showed","fan motor","that motor","the motor","motor we looked","part we looked","part we talked","we looked at","i showed you","knocks out that"])){
     done.opt_link=true;
-    reply.push(rand([`Okay, I follow you.`,`Right, the part you showed me.`,`Mm-hm, that makes sense.`]));
+    reply.push(rand([`Okay, I follow you.`,`Right, the part you showed me.`,`Mm-hm, that makes sense.`,`Yeah, the one from up in the attic — got it.`]));
   }
-  // Present options — price stated
-  if(any(t,["$","dollars","thousand","hundred","the cost","the price is","comes to","priced at","total is"])){
+  // Present options — price stated (incl. spelled-out amounts like "twelve forty nine")
+  if(any(t,["$","dollars","thousand","hundred","the cost","the price is","comes to","priced at","total is","run you","gonna run","runs you","that'll be","grand","bucks","fifty nine","forty nine","ninety nine"])){
     done.opt_price=true;
     maybeObjection(reply);
   }
@@ -696,8 +699,8 @@ function techSays(raw){
   }
   // Objection handling detection (empathy + question)
   if(awaitingObjection || done.obj_pending){
-    const empathy=any(t,["understand","i hear you","totally get","i get it","makes sense","i know","that's fair","completely fair","no rush","take your time","appreciate you being"]);
-    const question=Q(t)||any(t,["can i ask","what is it","what's holding","how do you feel","what are you thinking","mind if i ask","what would","which part"]);
+    const empathy=any(t,["understand","i hear you","hear you","totally get","i get it","get it","makes sense","i know","that's fair","completely fair","no rush","take your time","appreciate you being","don't blame you","i'd feel the same","chunk of change","that's a lot"]);
+    const question=Q(t)||any(t,["can i ask","what is it","what's holding","holding you back","what's the main","what is the main","giving you pause","what's stopping","biggest concern","what concerns","on your mind","how do you feel","what are you thinking","mind if i ask","what would","which part","talk me through","help me understand"]);
     if(empathy){ done.obj_empathy=true; }
     if(empathy && question){ done.obj_question=true; awaitingObjection=false; done.obj_pending=false;
       reply.push(rand([`Yeah... I guess my main thing is just the money. But I hear what you're saying.`,`I mean, when you put it that way. It's just a lot at once.`]));
@@ -714,9 +717,9 @@ function techSays(raw){
   // SAM membership at close
   if(any(t,["sam member","become a member","membership benefits","join our","sign you up"]) && phase===2){ reply.push(`Tell me a little about what that includes.`); }
   // Review
-  if(any(t,["five-star review","5-star review","5 star review","leave me a review","leave a review","tap your phone","tap this badge","google review","mention my name","did i give you five"])){
+  if(phase===2 && any(t,["five-star review","5-star review","5 star review","leave me a review","leave a review","leaving me a review","leaving a review","a review","quick review","review before i","tap your phone","tap this badge","scan this","google review","mention my name","did i give you five","five-star service","five star service"])){
     done.review=true;
-    reply.push(rand([`Absolutely, you earned it. Happy to leave you a review.`,`For sure — you did a great job today.`]));
+    reply.push(rand([`Absolutely, you earned it. Happy to leave you a review.`,`For sure — you did a great job today.`,`Yeah, of course — you were great.`]));
   }
   if(any(t,["thank you","thanks","appreciate you","have a great"]) && phase===2 && done.review){ reply.push(`Thank you! Take care.`); }
 
