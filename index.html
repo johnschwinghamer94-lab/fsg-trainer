@@ -83,20 +83,82 @@
   .actbar button.end{color:var(--weak); border-color:#f0c9c9}
   .hidden{display:none!important}
   .notice{font-size:11.5px; color:var(--muted); text-align:center; padding:2px}
+
+  /* Login + Admin */
+  #login,#admin{flex:1; overflow:auto; padding:22px 16px; display:none}
+  .authcard{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 18px; max-width:420px; margin:6vh auto 0; box-shadow:0 4px 20px rgba(16,32,64,.08)}
+  .authcard h2{margin:0 0 4px; font-size:19px}
+  .authcard p.sub{margin:0 0 16px; color:var(--muted); font-size:13px}
+  .authcard select,.authcard input{width:100%; border:1.5px solid var(--line); border-radius:11px; padding:13px; font-size:16px; font-family:inherit; background:#fff; margin-bottom:10px}
+  .pinrow{display:flex; gap:8px; justify-content:center; margin:6px 0 12px}
+  .pindisp{display:flex; gap:10px; justify-content:center; margin:10px 0}
+  .pindot{width:16px; height:16px; border-radius:50%; border:2px solid var(--navy); background:#fff}
+  .pindot.on{background:var(--navy)}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:280px; margin:0 auto}
+  .keypad button{border:1.5px solid var(--line); background:#fff; border-radius:12px; padding:16px 0; font-size:22px; font-weight:700; color:var(--ink); cursor:pointer}
+  .keypad button:active{background:#eef2fa}
+  .keypad button.wide{grid-column:span 1; font-size:14px; font-weight:600; color:var(--muted)}
+  .autherr{color:var(--weak); font-size:13px; text-align:center; min-height:18px; margin:4px 0}
+  .authlink{display:block; text-align:center; margin-top:16px; color:var(--muted); font-size:12.5px; text-decoration:underline; cursor:pointer; background:none; border:none; width:100%}
+  .usertag{margin-left:auto; text-align:right; font-size:11px; color:#9fb0d0; line-height:1.3}
+  .usertag b{color:#fff; font-size:12.5px}
+  .usertag button{display:block; margin-left:auto; margin-top:2px; background:none; border:none; color:var(--amber); font-size:11px; cursor:pointer; text-decoration:underline; padding:0}
+  table.usage{width:100%; border-collapse:collapse; font-size:13px; margin-top:10px}
+  table.usage th,table.usage td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--line)}
+  table.usage th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted)}
+  table.usage td.num{text-align:right; font-variant-numeric:tabular-nums; font-weight:700; color:var(--navy)}
+  table.usage tr.me td{background:#fffaf0}
+  .adminhead{display:flex; align-items:center; gap:10px; max-width:640px; margin:0 auto 10px}
+  .adminhead h2{margin:0; font-size:18px; flex:1}
+  .adminhead button{border:1px solid var(--line); background:#fff; border-radius:9px; padding:7px 12px; font-size:12.5px; font-weight:700; cursor:pointer}
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">FSG <span class="amber">LIVE</span> TRAINER</div>
-  <div class="tag">Sierra · SILO<br>Practice partner</div>
+  <div class="tag" id="hdrTag">Sierra · SILO<br>Practice partner</div>
+  <div class="usertag hidden" id="userTag"></div>
 </header>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login">
+  <div class="authcard">
+    <h2 id="loginTitle">Tech sign-in</h2>
+    <p class="sub" id="loginSub">Select your name to start your FSG training.</p>
+
+    <div id="pickStep">
+      <label class="fld">Your name (SILO roster)</label>
+      <select id="rosterSel"></select>
+      <button class="btn" id="pickBtn">Continue</button>
+    </div>
+
+    <div id="pinStep" class="hidden">
+      <div class="pindisp" id="pinDots"></div>
+      <div class="autherr" id="pinErr"></div>
+      <div class="keypad" id="keypad"></div>
+      <button class="authlink" id="backToPick">← back</button>
+    </div>
+
+    <button class="authlink" id="adminLink">Admin dashboard</button>
+  </div>
+</div>
+
+<!-- ===================== ADMIN ===================== -->
+<div id="admin">
+  <div class="adminhead">
+    <h2>📊 Training Usage</h2>
+    <button id="adminRefresh">↻ Refresh</button>
+    <button id="adminExit">Exit</button>
+  </div>
+  <div id="adminBody" style="max-width:640px;margin:0 auto"></div>
+</div>
 
 <!-- ===================== SETUP ===================== -->
 <div id="setup">
   <div class="card">
     <h2>Practice a live call</h2>
-    <p class="sub">Talk (or type) to an AI homeowner. They answer out loud and you get an FSG debrief. Runs 100% on your phone — no login, no key, nothing billed.</p>
+    <p class="sub">Talk (or type) to the homeowner. They answer out loud and you get an FSG debrief. Runs right on your phone.</p>
 
     <label class="fld">Choose a scenario</label>
     <div class="opts" id="scenarioOpts"></div>
@@ -1126,6 +1188,152 @@ function resetToSetup(){
   document.getElementById('setup').style.display="block";
   buildSetup();
 }
+
+/* ============================================================
+   LOGIN / PIN / USAGE / ADMIN
+   Works locally out of the box (per-device). Set AUTH_ENDPOINT to the
+   deployed auth Worker URL to make accounts + usage team-wide so the
+   admin dashboard shows everyone. (No Anthropic key involved.)
+   ============================================================ */
+const ROSTER = ["Alex Yakovchuk","Andrew Alonso","Andrew Trujillo","Benjamin Wyllie","Brandon Moreno","Cole Pantol","Dustin Romine","Francisco Arreola Jr.","Francisco Valencia","Joe Mendoza","Juan Tlatenchi","Mario Castro","Nathan Colquitt","Nikko April","Noah Weng","Robert Silinzy"];
+const AUTH_ENDPOINT = "";     // e.g. "https://fsg-auth.<you>.workers.dev"  → team-wide
+const PIN_LEN = 4;
+let currentUser = null;
+
+// ---- helpers ----
+async function sha(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode("fsg-silo-2026:"+s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const $ = id => document.getElementById(id);
+function lusers(){ try{return JSON.parse(localStorage.getItem("fsg_users")||"{}")}catch(e){return {}} }
+function lsave(o){ localStorage.setItem("fsg_users", JSON.stringify(o)); }
+function fmtTime(s){ s=Math.round(s||0); if(s<60) return s+"s"; const m=Math.floor(s/60), h=Math.floor(m/60);
+  return h>0 ? `${h}h ${m%60}m` : `${m}m`; }
+function ago(ts){ if(!ts) return "—"; const s=(Date.now()-ts)/1000;
+  if(s<60) return "just now"; if(s<3600) return Math.floor(s/60)+"m ago"; if(s<86400) return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; }
+async function api(path,payload){ const r=await fetch(AUTH_ENDPOINT+path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+  let d={}; try{d=await r.json()}catch(e){} return {ok:r.ok, data:d, status:r.status}; }
+
+// ---- account ops (mode-aware) ----
+async function acctExists(name){
+  if(AUTH_ENDPOINT){ const r=await api("/api/status",{name}); return !!r.data.exists; }
+  return !!lusers()[name];
+}
+async function acctRegister(name,pin){
+  if(AUTH_ENDPOINT){ const r=await api("/api/register",{name,pin}); return r.ok; }
+  const u=lusers(); u[name]={name, pinHash:await sha(pin), createdAt:Date.now(), lastActive:Date.now(), totalSeconds:0, sessions:1}; lsave(u); return true;
+}
+async function acctLogin(name,pin){
+  if(AUTH_ENDPOINT){ const r=await api("/api/login",{name,pin}); return r.ok; }
+  const u=lusers(); const rec=u[name]; if(!rec) return false;
+  if(rec.pinHash!==await sha(pin)) return false;
+  rec.lastActive=Date.now(); rec.sessions=(rec.sessions||0)+1; lsave(u); return true;
+}
+async function acctHeartbeat(name,secs){
+  if(AUTH_ENDPOINT){ try{ if(navigator.sendBeacon){ navigator.sendBeacon(AUTH_ENDPOINT+"/api/heartbeat", new Blob([JSON.stringify({name,seconds:secs})],{type:"application/json"})); } else { api("/api/heartbeat",{name,seconds:secs}); } }catch(e){} return; }
+  const u=lusers(); if(u[name]){ u[name].totalSeconds=(u[name].totalSeconds||0)+secs; u[name].lastActive=Date.now(); lsave(u); }
+}
+async function acctAdminList(adminPin){
+  if(AUTH_ENDPOINT){ const r=await api("/api/admin",{adminPin}); return r.ok ? r.data.users : null; }
+  const stored=localStorage.getItem("fsg_admin_pin");
+  if(stored && stored!==await sha(adminPin)) return null;
+  if(!stored){ localStorage.setItem("fsg_admin_pin", await sha(adminPin)); } // first time sets it
+  const u=lusers(); return Object.values(u).sort((a,b)=>(b.totalSeconds||0)-(a.totalSeconds||0));
+}
+
+// ---- usage timer (counts only visible, logged-in time) ----
+let segStart=0, usageInt=null;
+function usageStart(){ segStart=Date.now(); if(!usageInt) usageInt=setInterval(usageFlush, 20000); }
+function usageFlush(){ if(!currentUser) return;
+  if(segStart){ const now=Date.now(); const secs=Math.round((now-segStart)/1000); segStart=now; if(secs>0) acctHeartbeat(currentUser, secs); } }
+function usageStop(){ usageFlush(); if(usageInt){ clearInterval(usageInt); usageInt=null; } segStart=0; }
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden){ usageFlush(); segStart=0; } else if(currentUser){ segStart=Date.now(); } });
+window.addEventListener("pagehide", usageFlush);
+
+// ---- screen switching ----
+function showScreen(s){
+  $("login").style.display = s==="login"?"block":"none";
+  $("admin").style.display = s==="admin"?"block":"none";
+  $("setup").style.display = s==="setup"?"block":"none";
+  $("call").style.display  = s==="call"?"flex":"none";
+  const inApp = (s==="setup"||s==="call");
+  $("userTag").classList.toggle("hidden", !inApp);
+  $("hdrTag").classList.toggle("hidden", inApp);
+}
+function firstName(n){ return (n||"").split(" ")[0]; }
+function renderUserTag(){ $("userTag").innerHTML = `<b>${firstName(currentUser)}</b><br>signed in<button id="logoutBtn">Log out</button>`;
+  $("logoutBtn").onclick=logout; }
+function onLoggedIn(name){ currentUser=name; sessionStorage.setItem("fsg_current", name); renderUserTag(); usageStart(); showScreen("setup"); }
+function logout(){ usageStop(); currentUser=null; sessionStorage.removeItem("fsg_current"); resetPin(); showScreen("login"); }
+
+// ---- PIN keypad ----
+let pinBuf="", pinMode="enter", pinTmp="", pinName="";
+function renderDots(){ let h=""; for(let i=0;i<PIN_LEN;i++) h+=`<span class="pindot ${i<pinBuf.length?'on':''}"></span>`; $("pinDots").innerHTML=h; }
+function buildKeypad(){ const ks=["1","2","3","4","5","6","7","8","9","⌫","0","C"];
+  $("keypad").innerHTML = ks.map(k=>`<button class="${/[⌫C]/.test(k)?'wide':''}" data-k="${k}">${k}</button>`).join("");
+  $("keypad").querySelectorAll("button").forEach(b=> b.onclick=()=>press(b.dataset.k)); }
+function press(k){ if(k==="C") pinBuf=""; else if(k==="⌫") pinBuf=pinBuf.slice(0,-1); else if(pinBuf.length<PIN_LEN) pinBuf+=k;
+  renderDots(); if(pinBuf.length===PIN_LEN) setTimeout(submitPin,140); }
+function resetPin(){ pinBuf=""; pinTmp=""; pinMode="enter"; $("pinStep").classList.add("hidden"); $("pickStep").classList.remove("hidden"); $("pinErr").textContent="";
+  $("loginTitle").textContent="Tech sign-in"; $("loginSub").textContent="Select your name to start your FSG training."; if($("rosterSel")) $("rosterSel").value=""; }
+let lastAdminPin=null;
+function openPin(mode,name){ pinMode=mode; pinName=name||""; pinBuf=""; pinTmp=""; renderDots(); $("pinErr").textContent="";
+  $("pickStep").classList.add("hidden"); $("pinStep").classList.remove("hidden"); setPinTitle(); }
+function setPinTitle(){ const f=firstName(pinName);
+  const T={ enter:[`Enter your PIN`,`Welcome back, ${f}.`], create:[`Create a PIN`,`First time, ${f} — pick a ${PIN_LEN}-digit PIN.`],
+    confirm:[`Confirm your PIN`,`Enter it once more.`], admin:[`Admin PIN`,`Enter the admin PIN.`],
+    adminCreate:[`Set an admin PIN`,`Pick a ${PIN_LEN}-digit admin PIN.`], adminConfirm:[`Confirm admin PIN`,`Enter it once more.`] };
+  const [t,s]=T[pinMode]||T.enter; $("loginTitle").textContent=t; $("loginSub").textContent=s; }
+async function submitPin(){
+  const pin=pinBuf;
+  if(pinMode==="enter"){
+    const ok=await acctLogin(pinName,pin); if(ok) onLoggedIn(pinName); else { pinErrShake("Wrong PIN — try again"); }
+  } else if(pinMode==="create"){ pinTmp=pin; pinMode="confirm"; pinBuf=""; renderDots(); setPinTitle();
+  } else if(pinMode==="confirm"){ if(pin===pinTmp){ await acctRegister(pinName,pin); onLoggedIn(pinName); } else { pinMode="create"; pinErrShake("PINs didn't match — start over"); }
+  } else if(pinMode==="admin"){ const users=await acctAdminList(pin); if(users){ lastAdminPin=pin; renderAdmin(users); } else pinErrShake("Wrong admin PIN");
+  } else if(pinMode==="adminCreate"){ pinTmp=pin; pinMode="adminConfirm"; pinBuf=""; renderDots(); setPinTitle();
+  } else if(pinMode==="adminConfirm"){ if(pin===pinTmp){ const users=await acctAdminList(pin); renderAdmin(users||[]); } else { pinMode="adminCreate"; pinErrShake("PINs didn't match"); } }
+}
+function pinErrShake(msg){ $("pinErr").textContent=msg; pinBuf=""; renderDots(); }
+
+// ---- admin dashboard ----
+function renderAdmin(users){
+  showScreen("admin");
+  const total = users.reduce((s,u)=>s+(u.totalSeconds||0),0);
+  const active = users.filter(u=>u.totalSeconds>0).length;
+  let h = `<div class="notice" style="text-align:left;font-size:13px;margin-bottom:6px">${ROSTER.length} on roster · ${active} have trained · ${fmtTime(total)} total practice${AUTH_ENDPOINT?"":" <b>(this device only — deploy the auth Worker for team-wide)</b>"}</div>`;
+  h += `<table class="usage"><tr><th>Tech</th><th class="num">Time</th><th class="num">Sessions</th><th>Last active</th></tr>`;
+  const byName={}; users.forEach(u=>byName[u.name]=u);
+  // show whole roster, even those who haven't logged in
+  const rows = ROSTER.map(n=> byName[n] || {name:n, totalSeconds:0, sessions:0, lastActive:0})
+    .concat(users.filter(u=>!ROSTER.includes(u.name)))
+    .sort((a,b)=>(b.totalSeconds||0)-(a.totalSeconds||0));
+  rows.forEach(u=>{ h += `<tr class="${u.name===currentUser?'me':''}"><td>${u.name}</td><td class="num">${u.totalSeconds?fmtTime(u.totalSeconds):"—"}</td><td class="num">${u.sessions||0}</td><td>${ago(u.lastActive)}</td></tr>`; });
+  h += `</table>`;
+  $("adminBody").innerHTML = h;
+}
+
+// ---- wire it up ----
+(function initAuth(){
+  buildKeypad(); renderDots();
+  // roster dropdown
+  const sel=$("rosterSel");
+  sel.innerHTML = `<option value="">— select your name —</option>` + ROSTER.map(n=>`<option>${n}</option>`).join("");
+  $("pickBtn").onclick = async ()=>{ const name=sel.value; if(!name){ return; }
+    const exists = await acctExists(name); openPin(exists?"enter":"create", name); };
+  $("backToPick").onclick = ()=>{ resetPin(); $("loginTitle").textContent="Tech sign-in"; $("loginSub").textContent="Select your name to start your FSG training."; };
+  $("adminLink").onclick = async ()=>{
+    if(AUTH_ENDPOINT){ openPin("admin","admin"); }
+    else { const first = !localStorage.getItem("fsg_admin_pin"); openPin(first?"adminCreate":"admin","admin"); }
+  };
+  $("adminRefresh").onclick = async ()=>{ if(lastAdminPin){ const u=await acctAdminList(lastAdminPin); if(u) renderAdmin(u); }
+    else { showScreen("login"); openPin("admin","admin"); } };
+  $("adminExit").onclick = ()=>{ if(currentUser){ showScreen("setup"); } else { resetPin(); showScreen("login"); } };
+
+  // resume session if still signed in this browser session
+  const saved = sessionStorage.getItem("fsg_current");
+  if(saved && ROSTER.includes(saved)){ currentUser=saved; renderUserTag(); usageStart(); showScreen("setup"); }
+  else { showScreen("login"); }
+})();
 </script>
 </body>
 </html>
