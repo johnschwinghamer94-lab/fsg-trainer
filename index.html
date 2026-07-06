@@ -367,6 +367,14 @@ let curObjType=null;             // type of the objection currently on the table
 let lastCust="";                 // last homeowner line (anti-repeat)
 let recentCust=[];               // recent homeowner lines (anti-repeat window)
 function personaOf(){ return (SC && SC.persona) || {ack:["Okay.","Sure.","Alright."],worry:[],small:[]}; }
+
+/* ---------- AI MODE ----------
+   Set AI_ENDPOINT to your deployed Cloudflare Worker URL to give the whole team
+   real, free-thinking AI homeowners. Leave "" to run the free scripted engine.
+   Coaching still works either way (it scores the TECH's words, not the reply). */
+const AI_ENDPOINT = "";          // e.g. "https://fsg-trainer.<you>.workers.dev"
+let aiHistory = [];              // running transcript sent to the proxy
+let detectOnly = false;          // when true, techSays() updates checkpoints but shows no reply
 const GYM = {cat:"mixed", queue:[], i:0, results:[], gender:"m", name:"Homeowner"};
 
 /* ---------- CHECKPOINT DEFINITIONS (for coaching) ---------- */
@@ -743,6 +751,7 @@ function techSays(raw){
 
   // Trim to a natural length (max 2 sentences of homeowner)
   let out = reply.slice(0,2).join(" ");
+  if(detectOnly) return out;   // AI mode: checkpoints are updated above; skip the scripted bubble
   const p = personaOf();
 
   // anti-repeat: never say the exact same thing twice in a short window
@@ -896,8 +905,42 @@ function send(raw){
   entry.value=""; autoGrow();
   addMsg("tech", text);
   if(mode==="gym"){ gymHandle(text); return; }   // gym manages its own speech + advancing
+  if(AI_ENDPOINT){ aiSend(text); return; }        // real AI homeowner
   const reply = techSays(text);
   speak(reply, ()=>{ if(document.getElementById('autoChk').checked && recSupported && started){ setTimeout(startListen,250); } });
+}
+
+/* AI homeowner via the proxy. Keeps coaching working (detectOnly), and falls
+   back to the scripted engine if the network/proxy ever fails. */
+async function aiSend(text){
+  // update FSG checkpoints for coaching without showing a scripted reply
+  detectOnly=true; try{ techSays(text); }catch(e){} detectOnly=false;
+  aiHistory.push({role:"user", content:text});
+  const dots = addTyping();
+  try{
+    const r = await fetch(AI_ENDPOINT, {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ scenario:chosenScenario, difficulty:chosenDiff, messages:aiHistory })
+    });
+    const data = await r.json();
+    dots.remove();
+    if(!r.ok || !data.reply) throw new Error(data.error||"AI error");
+    aiHistory.push({role:"assistant", content:data.reply});
+    if(aiHistory.length>40) aiHistory=aiHistory.slice(-40);
+    addMsg("cust", data.reply);
+    speak(data.reply, ()=>{ if(document.getElementById('autoChk').checked && recSupported && started){ setTimeout(startListen,250); } });
+  }catch(e){
+    dots.remove();
+    voiceNote.textContent="⚠️ AI offline — using scripted mode";
+    const reply = techSays(text);   // graceful fallback (adds the scripted bubble)
+    speak(reply, ()=>{ if(document.getElementById('autoChk').checked && recSupported && started){ setTimeout(startListen,250); } });
+  }
+}
+function addTyping(){
+  const d=document.createElement('div');
+  d.className="msg cust"; d.style.opacity=".7";
+  d.innerHTML=`<span class="who">${SC?SC.name:"Homeowner"}</span><i>…</i>`;
+  log.appendChild(d); log.scrollTop=log.scrollHeight; return d;
 }
 
 function autoGrow(){ entry.style.height="auto"; entry.style.height=Math.min(entry.scrollHeight,110)+"px"; }
@@ -1052,7 +1095,7 @@ function startCall(){
   SC=Object.assign({}, SCENARIOS[chosenScenario]);
   DF=DIFFS[chosenDiff];
   phase=0; started=true; awaitingObjection=false; jargonHits=0; turns=0;
-  lastCust=""; recentCust=[];
+  lastCust=""; recentCust=[]; aiHistory=[];
   Object.keys(done).forEach(k=>delete done[k]);
   custVoice=pickVoice(SC.gender);
   log.innerHTML="";
