@@ -404,17 +404,17 @@ SCENARIOS.noac.objCats    = ["price","old_system","competitor","stall"];
 
 // personalities — distinct voice, acknowledgements, worries, and small talk per homeowner
 SCENARIOS.warmair.persona = {
-  ack:["Okay.","Alright, yeah.","Gotcha.","Sure, that works.","Mm-hm, okay.","Yeah, for sure."],
+  ack:["Okay.","Oh, okay.","Gotcha.","Yeah, alright.","Mm-hmm.","Got it.","Right.","Oh, I see.","Yeah, for sure.","Okay, sure."],
   worry:["You think it's something serious?","Is this gonna be a big fix?","Man, I hope it's not the whole unit.","How long do these usually take to fix?"],
   small:["It's been a rough one, honestly — brutal in here.","I just want it cooling again, you know?","Appreciate you coming out so quick."]
 };
 SCENARIOS.maint.persona = {
-  ack:["Oh, okay, sounds good.","Sure, of course.","That's fine, take your time.","Okay, wonderful.","Mm-hm, absolutely."],
+  ack:["Oh, okay, sounds good.","Sure, of course.","Oh, perfect.","Okay, wonderful.","Mm-hmm, absolutely.","Oh, nice.","Yeah, that's fine.","Oh, okay."],
   worry:["Everything looking okay so far?","Anything I should be worried about?","You all always take such good care of it.","Is it in decent shape for its age?"],
   small:["We've been with you guys for years, you know.","The kids basically grew up in this house.","I like to stay on top of the maintenance."]
 };
 SCENARIOS.noac.persona = {
-  ack:["Okay.","Fine.","Yeah, whatever works.","Sure.","Alright, go ahead.","Mm."],
+  ack:["Okay.","Right.","Yeah, fine.","Sure.","Mm.","Gotcha.","Alright.","Yeah, okay."],
   worry:["Just tell me it's not gonna cost a fortune.","This better not turn into a whole new system.","How much is this gonna run me?","Give it to me straight — how bad is it?"],
   small:["It's an oven in here, so let's keep it moving.","Last company kind of burned me, just so you know.","I don't have all day, so."]
 };
@@ -730,7 +730,7 @@ function techSays(raw){
   }
 
   /* ===================== PHASE 1: FINDINGS & CHECK-IN ===================== */
-  if(any(t,["how long have you lived","lived in the home","lived here","how long you been here","been in this house","been in this home","been in the house","in this house","how long you had the house","how long you've been here","own this house long"])){ done.q_lived=true; reply.push(F.lived); }
+  if(any(t,["how long have you lived","lived in the home","lived here","how long you been here","been in this house","been in this home","been in the house","been in the home","in this house","in the home","how long have you been in","how long you had the house","how long you've been here","own this house long"])){ done.q_lived=true; reply.push(F.lived); }
   if(any(t,["when you purchased","did you buy","when you bought","that when you bought","own the home","are you the owner","you the owner","buy it back then","buy or rent","did you rent"])){ done.q_purchase=true; reply.push(F.purchase); }
   if(any(t,["plan on staying","plan to stay","planning to stay","planning on staying","how long do you plan","staying in the home","staying here","stay here","stay a while","see yourself staying","how long you'll stay","here for the long","long-term plan","forever home"])){ done.q_stay=true; reply.push(F.stay); }
   if(any(t,["filter"])){ done.q_filters=true; reply.push(F.filters); }
@@ -748,9 +748,14 @@ function techSays(raw){
   // Check-in / findings
   if(any(t,["what i found","what i noticed","let me show you","come take a look","come here real quick","come here for a sec","want to show you","show you something","found something","take a look at this","look at this","noticed a couple","here's what i saw","here's what i found","let me walk you through","see this right here","see this part"])){
     done.checkin=true;
-    reply.push(rand([`Okay... what did you find?`,`Uh oh. Show me.`,`Alright, I'm looking.`,`Okay, what am I looking at?`]));
+    reply.push(rand([`Okay... what'd you find?`,`Uh oh. Show me.`,`Oh, okay — what am I looking at?`,`Really? Okay, show me.`,`Alright, I'm looking.`]));
   }
   if(any(t,["picture","photo","see here in this","this image","this photo","snapped a","took a pic","here's a shot"])){ done.pictures=true; }
+  // Reaction to bad news / a concern (adds realism during the evaluation)
+  if(phase===1 && !done.concernReact && any(t,["cause for concern","little concerned","bit concerned","not looking good","kind of worn","really worn","worn out","corroded","rust","rusted","rusty","cracked","starting to fail","gonna fail","on its way out","on its last legs","shot","leaking","past its life","end of its life","bad news","not great"])){
+    done.concernReact=true;
+    reply.push(rand([`Oh no. Is it bad?`,`Oh, okay... that doesn't sound great.`,`Wow. Okay.`,`Really? Man.`,`Hm. How bad are we talking?`]));
+  }
   // Diagnose prompt — get the customer to say what's wrong
   if(any(t,["what do you think","think happens","what happens when","think that means","think it means","think it needs","think we should","think we need","would you say","you can see how","that make sense","see what i mean","what does that tell you","what would you do"])){
     done.diagnose=true; reply.push(SC.diagnose);
@@ -771,15 +776,20 @@ function techSays(raw){
   if(any(t,["thank you for your time","appreciate your time","thanks for your time","thank you for having me","appreciate you letting me","really want to thank"])){ done.reconnect=true; reply.push(rand([`Of course, no problem.`,`Sure thing.`])); }
   if(any(t,["about sierra","love working","upfront pricing","final price","final prices","flat rate","flat pricing","really cool about"])){ done.reconnect=true; reply.push(`Oh, that's good to know, actually.`); }
 
-  // Present options — link
-  if(any(t,["option a","first option","immediate repair","option b","second option","future repair","option c","system update","remember when i showed","the part i showed you","that motor i showed","the motor i showed","fan motor","that motor","the motor","motor we looked","part we looked","part we talked","we looked at","i showed you","knocks out that"])){
+  // Present options — link  (explicit option cues fire anytime; bare part-references
+  //  only count as an option-link in the Options phase so they don't bleed into check-ins)
+  const optExplicit = any(t,["option a","first option","immediate repair","option b","second option","future repair","option c","system update","remember when i showed","the part i showed you","i showed you","knocks out that"]);
+  const optPart = phase===2 && any(t,["that motor i showed","the motor i showed","fan motor","that motor","the motor","motor we looked","part we looked","part we talked","we looked at"]);
+  if(optExplicit || optPart){
     done.opt_link=true;
-    reply.push(rand([`Okay, I follow you.`,`Right, the part you showed me.`,`Mm-hm, that makes sense.`,`Yeah, the one from up in the attic — got it.`]));
+    reply.push(rand([`Oh, okay.`,`Gotcha.`,`Right, the part you showed me.`,`Oh, I see.`,`Mm-hmm, that makes sense.`,`Yeah, the one from up in the attic — got it.`]));
   }
   // Present options — price stated (incl. spelled-out amounts like "twelve forty nine")
   if(any(t,["$","dollars","thousand","hundred","the cost","the price is","comes to","priced at","total is","run you","gonna run","runs you","that'll be","grand","bucks","fifty nine","forty nine","ninety nine"])){
     done.opt_price=true;
+    const before=reply.length;
     maybeObjection(reply);
+    if(reply.length===before) reply.push(rand([`Okay.`,`Oh. Okay.`,`Mm-hmm.`,`Wow, okay.`,`Alright.`,`Hm, okay.`]));
   }
   // Spin it
   if(any(t,["which option works best","take a look and let me know","what works best for you today","which one works best","let me know which","which of these","what would you like to do"])){
